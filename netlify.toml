@@ -1,0 +1,28 @@
+# Mise en ligne de test sur Netlify : site statique, aucune étape de construction.
+# Les données saisies restent sur le téléphone (stockage du navigateur) : rien n'est envoyé à Netlify.
+[build]
+  publish = "."
+
+# Fichiers de développement non servis.
+[[redirects]]
+  from = "/tests/*"
+  to = "/index.html"
+  status = 404
+  force = true
+
+[[redirects]]
+  from = "/server.mjs"
+  to = "/index.html"
+  status = 404
+  force = true
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    # Version de test : pas d'indexation par les moteurs de recherche.
+    X-Robots-Tag = "noindex, nofollow"
+    # Toujours la dernière version après chaque mise à jour (pas d'ancien code en cache).
+    Cache-Control = "no-cache"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "no-referrer"
+    X-Frame-Options = "DENY"
