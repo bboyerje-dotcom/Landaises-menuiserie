@@ -58,6 +58,10 @@ const ALIM = opt('alimentation', 'Alimentation électrique à proximité', { oui
 const MOTORISATION = opt('motorisation', 'Motorisation', { non: 'Non', oui: 'Oui', a_definir: 'À définir' });
 const ALIM_MOTEUR = opt('alimentation', 'Alimentation électrique à proximité', { oui: 'Oui', non: 'Non', a_verifier: 'À vérifier' }, { siOption: { motorisation: ['oui'] } });
 const SUPPORT = opt('support', 'Nature du support de fixation', { beton: 'Béton', parpaing: 'Parpaing', brique: 'Brique', pierre: 'Pierre', bois: 'Bois / ossature', isolant: 'Isolation extérieure', a_verifier: 'À vérifier' });
+import { SERIES_CASSE, VERRES, INTERCALAIRES } from '../config/abaque-casse.js';
+import { calculCasse } from '../domain/casse.js';
+const choixDe = (t) => Object.fromEntries(Object.entries(t).map(([k, v]) => [k, v.libelle]));
+
 const POSES_MENUISERIE = { renovation: 'Rénovation sur dormant conservé', depose_totale: 'Dépose totale', applique: 'Applique', tunnel: 'Tunnel', feuillure: 'Feuillure' };
 
 export const FAMILLES = {
@@ -66,6 +70,7 @@ export const FAMILLES = {
   volet: 'Volets',
   store: 'Stores',
   exterieur: 'Portails, pergolas, carports',
+  sav: 'SAV / vitrage',
 };
 
 // ---------- Dessins réutilisés
@@ -366,6 +371,35 @@ export const PRODUITS = [
     photos: ['exterieur'],
   },
 ];
+
+// ===== SAV / vitrage (ajouté après le catalogue principal)
+PRODUITS.push({
+  id: 'casse_vitrage', famille: 'sav', libelle: 'Remplacement de casse (vitrage)', prefixe: 'V',
+  aide: 'Relever CÔTÉ PARCLOSES : clair de vitre (CDV) ou fond de feuillure (FF) selon la série, l’épaisseur totale et la composition. Photos : vitrage, intercalaire, parcloses. Calcul par l’abaque interne LDM (indicatif).',
+  dessin: () => R(60, 20, 180, 180) + R(78, 38, 144, 144, 'd-pointille') + R(86, 46, 128, 128, 'd-toile-zone') + R(96, 56, 108, 108, 'd-fin')
+    + T(150, 120, 'vitrage', 'd-legende') + T(150, 214, 'Vue côté parcloses', 'd-legende'),
+  cotes: [
+    cote('CDVL', 'CDV L', 'Clair de vitre – largeur', 'largeur', [96, 80, 204, 80], { obligatoire: false }),
+    cote('CDVH', 'CDV H', 'Clair de vitre – hauteur', 'hauteur', [124, 56, 124, 164], { obligatoire: false }),
+    cote('FFL', 'FF L', 'Fond de feuillure – largeur', 'largeur', [78, 190, 222, 190], { obligatoire: false, groupe: null }),
+    cote('FFH', 'FF H', 'Fond de feuillure – hauteur', 'hauteur', [68, 38, 68, 182], { obligatoire: false, groupe: null, t: 0.3 }),
+    cote('NL', 'N L', 'Cote nette relevée sur l’ancien vitrage – largeur', 'autre', [86, 152, 214, 152], { obligatoire: false }),
+    cote('NH', 'N H', 'Cote nette relevée sur l’ancien vitrage – hauteur', 'autre', [182, 46, 182, 174], { obligatoire: false, t: 0.7 }),
+    cote('EP', 'ÉP', 'Épaisseur totale mesurée du vitrage', 'profondeur', [246, 100, 290, 100], { decimal: true, min: 3, max: 80 }),
+  ],
+  options: [
+    opt('serie', 'Série / type de menuiserie (abaque)', choixDe(SERIES_CASSE)),
+    opt('typeMenuiserie', 'Type de menuiserie', { fixe: 'Fixe', of: 'Ouvrant à la française', coulissant: 'Coulissant', autre: 'Autre' }),
+    opt('parcloses', 'Parcloses côté', { interieur: 'Intérieur', exterieur: 'Extérieur' }),
+    opt('verreExt', 'Verre face extérieure', choixDe(VERRES)),
+    opt('intercalaire', 'Intercalaire', choixDe(INTERCALAIRES)),
+    opt('verreInt', 'Verre face intérieure', choixDe(VERRES), { siOption: { intercalaire: Object.keys(INTERCALAIRES).filter((k) => k !== 'sv') } }),
+    opt('teinte', 'Teinte', { claire: 'Claire', granite: 'Granité', opale: 'Opale', autre: 'Autre (préciser en observation)' }),
+    opt('couleurIntercalaire', 'Couleur de l’intercalaire', { alu: 'Alu', noir: 'Noir', blanc: 'Blanc', autre: 'Autre' }, { obligatoire: false }),
+  ],
+  photos: ['exterieur', 'technique'],
+  calcul: calculCasse,
+});
 
 export const produit = (id) => PRODUITS.find((p) => p.id === id) || null;
 export const coteDe = (p, id) => p?.cotes.find((c) => c.id === id) || null;

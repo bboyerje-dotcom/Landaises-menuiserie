@@ -3,7 +3,7 @@ import { test, before, after, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { demarrer } from '../server.mjs';
-import { imageJpeg, ajouterPhotosObligatoires } from './aide-e2e.js';
+import { imageJpeg, ajouterPhotosObligatoires, remplirLdm } from './aide-e2e.js';
 
 const require = createRequire(import.meta.url);
 let chromium;
@@ -53,6 +53,7 @@ async function remplirComplet(p, o = {}) {
   await r('materiau', 'alu');
   await p.fill('#colorisInt', 'Blanc');
   await p.fill('#colorisExt', 'RAL 7016');
+  await remplirLdm(p, o.typologie || 'fenetre');
   if (o.photos !== false) await ajouterPhotosObligatoires(p, IMG);
 }
 

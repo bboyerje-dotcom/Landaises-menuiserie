@@ -216,3 +216,12 @@ dd { margin: 0; overflow-wrap: anywhere; white-space: pre-wrap; }
 .pc-collant .legende-cotes { flex-wrap: nowrap; overflow-x: auto; white-space: nowrap; font-size: 11px; }
 .pc-collant .bandeau { padding: 6px 8px; font-size: 13px; margin: 4px 0; }
 .pc-collant .pc-cadre img { max-height: 28vh; }
+
+/* ---- Étape 6 : fiche LDM et remplacement de casse ---- */
+.fiche-ldm [data-ldm] { margin-bottom: 4px; }
+.obl-cond { color: var(--alerte); }
+.calcul { border-left: 4px solid var(--accent); }
+.kv-simple { width: 100%; border-collapse: collapse; margin: 6px 0; font-size: 15px; }
+.kv-simple th { text-align: left; font-weight: 600; padding: 3px 8px 3px 0; vertical-align: top; width: 40%; }
+.kv-simple td { padding: 3px 0; overflow-wrap: anywhere; }
+.fiche-ldm-doc .avert { margin: 6px 0; }

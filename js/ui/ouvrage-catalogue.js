@@ -94,6 +94,7 @@ export async function ecranOuvrageCatalogue(app, dossierId, ouvrageId, p) {
       ${groupes.map((t) => `<h3 class="titre-groupe"><span class="pastille" style="background:${couleurCote(t)}"></span> ${esc(TYPES_COTE[t].libelle)}</h3>
         <table class="metrage"><tbody>${p.cotes.filter((c) => c.type === t).map(ligneCote).join('')}</tbody></table>`).join('')}
       <div class="retenues" id="retenues" data-test="retenues"></div>
+      <div id="calcul" data-test="calcul"></div>
       </div>
 
       ${(p.options || []).length ? `<h2>4. Options</h2>${p.options.map((op) => `<div data-option="${op.id}">${radios('opt_' + op.id, op.libelle, op.choix, { obl: op.obligatoire })}</div>`).join('')}` : ''}
@@ -140,6 +141,9 @@ export async function ecranOuvrageCatalogue(app, dossierId, ouvrageId, p) {
     const o = normaliser();
     const a = analyser(o);
     document.getElementById('retenues').innerHTML = `Cotes retenues (plus petite mesure) : <strong>L ${mm(a.largeurRetenue)}</strong> × <strong>H ${mm(a.hauteurRetenue)}</strong>`;
+    document.getElementById('calcul').innerHTML = a.calcul?.lignes?.length
+      ? `<div class="carte calcul"><strong>Calcul indicatif (abaque interne)</strong><table class="kv-simple">${a.calcul.lignes.map(([k, v]) => `<tr><th>${esc(k)}</th><td>${esc(v)}</td></tr>`).join('')}</table>
+         <p class="doux">Ne vaut pas cote de commande : à valider avant commande du vitrage.</p></div>` : '';
     const pts = [...a.manquants, ...a.alertes].map((x) => x.msg);
     document.getElementById('apercu').innerHTML = a.statut === 'complet'
       ? `<div class="bandeau ok">Statut à l’enregistrement : <strong>COMPLET</strong></div>`
@@ -246,7 +250,7 @@ export async function ecranOuvrageCatalogue(app, dossierId, ouvrageId, p) {
         ...o,
         poseConfirmeeLe: o.poseConfirmee ? (confirmeAvant ? existant.poseConfirmeeLe : fin.toISOString()) : null,
         statut: a.statut, pointsAVerifier: [...a.manquants, ...a.alertes].map((x) => x.msg),
-        largeurRetenue: a.largeurRetenue, hauteurRetenue: a.hauteurRetenue, reglesValidees: REGLES.valide,
+        largeurRetenue: a.largeurRetenue, hauteurRetenue: a.hauteurRetenue, reglesValidees: REGLES.valide, calcul: a.calcul,
       }, { dureeSec: brouillon.debut ? (fin - new Date(brouillon.debut)) / 1000 : 0, maintenant: fin });
       effacerBrouillon(cle);
       location.hash = `#/dossier/${encodeURIComponent(dossierId)}`;

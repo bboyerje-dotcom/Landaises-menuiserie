@@ -1,6 +1,8 @@
 // Règles métier d'un ouvrage (étape 2 : fenêtre et porte-fenêtre ; étape 3 : photos).
 // Module pur, testé avec `node --test`.
 import { manquesPhotos } from './photo.js';
+import { lireMm } from './mesures.js';
+import { normaliserLdm, analyserLdm } from '../catalogue/fiche-ldm.js';
 
 export const TYPOLOGIES = { fenetre: 'Fenêtre', porte_fenetre: 'Porte-fenêtre' };
 export const OUVERTURES = { francaise: 'À la française', oscillo_battant: 'Oscillo-battant', fixe: 'Fixe (non ouvrant)' };
@@ -35,12 +37,7 @@ const REF_COHERENTES = {
 
 const ligne = (v) => (typeof v === 'string' ? v.trim().replace(/\s+/g, ' ') : '');
 
-// '' → null ; entier en mm → nombre ; virgule, point, lettres → NaN (saisie à corriger).
-export function lireMm(v) {
-  const s = String(v ?? '').replace(/\s/g, '');
-  if (s === '') return null;
-  return /^\d+$/.test(s) ? Number(s) : NaN;
-}
+export { lireMm };
 
 export function normaliserOuvrage(s = {}) {
   const b = (v) => v === true || v === 'on' || v === 'true';
@@ -69,7 +66,15 @@ export function normaliserOuvrage(s = {}) {
     colorisExt: ligne(s.colorisExt),
     vitrage: ligne(s.vitrage),
     observations: typeof s.observations === 'string' ? s.observations.trim() : '',
+    quantite: Number(s.quantite) > 0 ? Math.floor(Number(s.quantite)) : 1,
   };
+}
+
+// Ouvrage normalisé complet : relevé + fiche LDM (dont les champs dépendent du relevé).
+export function normaliserOuvrageComplet(s = {}) {
+  const o = normaliserOuvrage(s);
+  o.ldm = normaliserLdm(s, o);
+  return o;
 }
 
 const presentes = (t) => t.filter((x) => x != null && !Number.isNaN(x));
@@ -135,6 +140,13 @@ export function analyserOuvrage(o, { regles, dossier = null, autres = [], photos
     alerte('typePose', 'Chantier neuf avec une pose de rénovation/dépose : à confirmer.');
   if (o.typePose === 'renovation' && o.etatDormant === 'mauvais') alerte('etatDormant', 'Dormant en mauvais état : la rénovation sur dormant conservé est-elle possible ?');
   if (o.typeOuverture === 'fixe' && o.sens) alerte('sens', 'Sens d’ouverture saisi sur un ouvrage fixe.');
+
+  // Fiche LDM (si présente)
+  if (o.ldm) {
+    const l = analyserLdm(o);
+    Object.assign(erreurs, l.erreurs);
+    manquants.push(...l.manquants);
+  }
 
   const valideEnregistrement = Object.keys(erreurs).length === 0;
   const statut = manquants.length === 0 && alertes.length === 0 ? 'complet' : 'a_verifier';

@@ -1,6 +1,6 @@
 // Règles du relevé pour les produits du catalogue (hors formulaire détaillé fenêtre).
 // Module pur, testé avec `node --test`.
-import { lireMm } from './ouvrage.js';
+import { lireMm } from './mesures.js';
 import { CATEGORIES_PHOTO } from './photo.js';
 
 const ligne = (v) => (typeof v === 'string' ? v.trim().replace(/\s+/g, ' ') : '');
@@ -26,7 +26,7 @@ export function optionVisible(opt, options) {
 
 export function normaliserOuvrageCatalogue(s, produit) {
   const cotes = {};
-  for (const c of produit.cotes) cotes[c.id] = c.unite === 'deg' ? lireDegres(s['cote_' + c.id]) : lireMm(s['cote_' + c.id]);
+  for (const c of produit.cotes) cotes[c.id] = c.unite === 'deg' || c.decimal ? lireDegres(s['cote_' + c.id]) : lireMm(s['cote_' + c.id]);
   const options = {};
   for (const o of produit.options || []) options[o.id] = ligne(s['opt_' + o.id]);
   for (const o of produit.options || []) if (!optionVisible(o, options)) options[o.id] = '';
@@ -53,11 +53,11 @@ export function analyserOuvrageCatalogue(o, produit, { regles, autres = [], phot
     const v = o.cotes[c.id];
     const champ = 'cote_' + c.id;
     if (v == null) { if (c.obligatoire) manque(champ, `${c.code} – ${c.libelle} : non mesuré.`); continue; }
-    if (Number.isNaN(v)) { erreurs[champ] = c.unite === 'deg' ? 'Angle en degrés (ex. 12 ou 12,5).' : 'Nombre entier en millimètres, sans virgule (ex. 1250).'; continue; }
+    if (Number.isNaN(v)) { erreurs[champ] = c.unite === 'deg' ? 'Angle en degrés (ex. 12 ou 12,5).' : c.decimal ? 'Nombre en millimètres (ex. 24 ou 28,8).' : 'Nombre entier en millimètres, sans virgule (ex. 1250).'; continue; }
     if (c.unite === 'deg') { if (v > 60) erreurs[champ] = 'Angle supérieur à 60° : vérifiez la saisie.'; continue; }
     const principal = c.type === 'largeur' || c.type === 'hauteur';
-    const min = principal ? regles.coteMinMm : 1;
-    const max = produit.coteMaxMm || (principal ? regles.coteMaxMm : 20000);
+    const min = c.min ?? (principal ? regles.coteMinMm : 1);
+    const max = c.max ?? (produit.coteMaxMm || (principal ? regles.coteMaxMm : 20000));
     if (v < min || v > max) erreurs[champ] = `Valeur hors plage ${min}–${max} mm : vérifiez l’unité (mm).`;
   }
 
@@ -73,6 +73,13 @@ export function analyserOuvrageCatalogue(o, produit, { regles, autres = [], phot
     const v = o.options[op.id];
     if (!v) { if (op.obligatoire) manque('opt_' + op.id, `${op.libelle} : non renseigné.`); }
     else if (v === 'a_definir' || v === 'a_verifier') alerte('opt_' + op.id, `${op.libelle} : ${op.choix[v].toLowerCase()}.`);
+  }
+  // Calcul propre au produit (ex. abaque de remplacement de casse)
+  let calcul = null;
+  if (produit.calcul) {
+    calcul = produit.calcul(o);
+    manquants.push(...calcul.manquants);
+    alertes.push(...calcul.alertes);
   }
   for (const cat of produit.photos || ['exterieur']) if (!photos.includes(cat)) manque('photos', `Photo « ${CATEGORIES_PHOTO[cat]} » manquante.`);
 
@@ -92,5 +99,6 @@ export function analyserOuvrageCatalogue(o, produit, { regles, autres = [], phot
     valideEnregistrement: Object.keys(erreurs).length === 0, erreurs, manquants, alertes,
     statut: manquants.length === 0 && alertes.length === 0 ? 'complet' : 'a_verifier',
     largeurRetenue: lr, hauteurRetenue: hr,
+    calcul: calcul ? { lignes: calcul.lignes, nette: calcul.nette } : null,
   };
 }

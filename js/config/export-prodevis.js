@@ -3,6 +3,7 @@
 // Pour l'aligner sur votre écran de saisie, réordonnez simplement les lignes ci-dessous
 // (ou renommez les en-têtes). Aucune autre modification n'est nécessaire.
 import { produit } from '../catalogue/produits.js';
+import { resumeLdm } from '../catalogue/fiche-ldm.js';
 import {
   TYPOLOGIES, OUVERTURES, MATERIAUX, TYPES_POSE, POINTS_DE_VUE, REFERENCES_MESURE, ETATS_DORMANT, SENS, STATUTS_OUVRAGE,
 } from '../domain/ouvrage.js';
@@ -37,6 +38,8 @@ export const COLONNES_PRODEVIS = [
     if (!p || o.kind !== 'catalogue') return '';
     return (p.options || []).filter((op) => o.options?.[op.id]).map((op) => `${op.libelle} : ${op.choix[o.options[op.id]] || o.options[op.id]}`).join(' | ');
   } },
+  { entete: 'Fiche LDM', valeur: (o) => (o.ldm ? resumeLdm(o).map(([k, v]) => `${k} : ${v}`).join(' | ') : '') },
+  { entete: 'Calcul indicatif (abaque)', valeur: (o) => (o.calcul?.lignes || []).filter(([k]) => k !== 'Source').map(([k, v]) => `${k} : ${v}`).join(' | ') },
   { entete: 'Mesures prises', valeur: (o) => lib(REFERENCES_MESURE, o.referenceMesure) },
   { entete: 'Mesures depuis', valeur: (o) => lib(POINTS_DE_VUE, o.pointDeVueMesure) },
   { entete: 'Type de pose', valeur: (o) => lib(TYPES_POSE, o.typePose) || produit(o.produit)?.poses?.[o.typePose] || '' },

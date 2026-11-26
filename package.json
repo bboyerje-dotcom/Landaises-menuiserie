@@ -7,8 +7,8 @@
   "scripts": {
     "start": "node server.mjs 8080",
     "start:lan": "node server.mjs 8080 --lan",
-    "test": "node --test tests/dossier.test.js tests/ouvrage.test.js tests/photo.test.js tests/export.test.js tests/catalogue.test.js",
-    "test:e2e": "node --test --test-concurrency=1 tests/e2e.test.js tests/e2e-ouvrage.test.js tests/e2e-photos.test.js tests/e2e-releve.test.js tests/e2e-catalogue.test.js tests/e2e-corrections.test.js",
+    "test": "node --test tests/dossier.test.js tests/ouvrage.test.js tests/photo.test.js tests/export.test.js tests/catalogue.test.js tests/casse-ldm.test.js",
+    "test:e2e": "node --test --test-concurrency=1 tests/e2e.test.js tests/e2e-ouvrage.test.js tests/e2e-photos.test.js tests/e2e-releve.test.js tests/e2e-catalogue.test.js tests/e2e-corrections.test.js tests/e2e-etape6.test.js",
     "test:all": "node --test tests/"
   }
 }

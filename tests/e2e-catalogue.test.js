@@ -45,12 +45,12 @@ async function attendreBase(p, store, cond) {
 const r = (p, n, v) => p.check(`input[name="${n}"][value="${v}"]`);
 const traitX = (p, id) => p.$eval(`[data-test=photo-cotes] [data-cote-trait="${id}"] line`, (l) => [Number(l.getAttribute('x1')), Number(l.getAttribute('x2'))]);
 
-test('choix du produit : 20 produits illustrés, fenêtre → formulaire détaillé, volet → relevé guidé', async () => {
+test('choix du produit : 21 produits illustrés, fenêtre → formulaire détaillé, volet → relevé guidé', async () => {
   await dossier(page);
   await page.click('[data-test=ajouter-ouvrage]');
   await page.waitForSelector('[data-test=produit-carport]');
-  assert.equal(await page.locator('.carte-produit').count(), 20);
-  assert.equal(await page.locator('.carte-produit svg').count(), 20);
+  assert.equal(await page.locator('.carte-produit').count(), 21);
+  assert.equal(await page.locator('.carte-produit svg').count(), 21);
   await page.click('[data-test=produit-fenetre]');
   await page.waitForSelector('#fo');
   assert.equal(await page.isChecked('input[name=typologie][value=fenetre]'), true);
@@ -211,10 +211,10 @@ test('relevé PDF : fiche du produit avec schéma coté, tableau de métrage et 
   assert.match(await page.textContent('[data-test=fiche-ouvrage] [data-test=calque-cotes]'), /L1 3500[\s\S]*° 4.5°/);
 });
 
-test('guide des relevés : 20 schémas et la légende des couleurs', async () => {
+test('guide des relevés : 21 schémas et la légende des couleurs', async () => {
   await page.goto(url + '#/guide');
   await page.waitForSelector('[data-test=guide-carport]');
-  assert.equal(await page.locator('.guide-produit svg').count(), 20);
+  assert.equal(await page.locator('.guide-produit svg').count(), 21);
   assert.match(await page.textContent('[data-test=legende]'), /Largeur.*Hauteur.*Retour d’habillage.*Tapée/);
 });
 

@@ -50,3 +50,13 @@ export const lireBase = (p, store) => p.evaluate((s) => new Promise((ok) => {
     g.onsuccess = () => { ok(JSON.parse(JSON.stringify(g.result, (k, v) => (v instanceof ArrayBuffer ? { octets: v.byteLength, texte: String.fromCharCode(...new Uint8Array(v)) } : v)))); r.result.close(); };
   };
 }), store);
+
+// Champs obligatoires de la fiche LDM (formulaire fenêtre / porte-fenêtre).
+export async function remplirLdm(p, typologie = 'fenetre') {
+  const r = (n, v) => p.check(`input[name="ldm_${n}"][value="${v}"]`);
+  await r('natureCotes', 'dp');
+  await r('gamme', 'g65');
+  if (typologie === 'fenetre') await r('appui', 'rentrant');
+  await r('poignee', 'gy_standard');
+  await r('fermeture', 'pts3');
+}

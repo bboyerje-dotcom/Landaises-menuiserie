@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { readFile } from 'node:fs/promises';
 import { demarrer } from '../server.mjs';
-import { imageJpeg, avecExif, ajouterPhoto, ajouterPhotosObligatoires, lireBase, variante } from './aide-e2e.js';
+import { imageJpeg, avecExif, ajouterPhoto, ajouterPhotosObligatoires, lireBase, variante, remplirLdm } from './aide-e2e.js';
 
 const require = createRequire(import.meta.url);
 let chromium;
@@ -46,6 +46,7 @@ async function dossierEtOuvrage(p, { complet = true } = {}) {
   for (const [k, v] of Object.entries({ L1: '1200', L2: '1198', L3: '1201', H1: '1350', H2: '1352', H3: '1349' })) await p.fill('#' + k, v);
   await r('typeOuverture', 'francaise'); await r('nbVantaux', '2'); await r('sens', 'droite'); await r('materiau', 'alu');
   await p.fill('#colorisInt', 'Blanc'); await p.fill('#colorisExt', 'RAL 7016');
+  await remplirLdm(p);
 }
 
 test('photos obligatoires : sans elles À VÉRIFIER, avec elles COMPLET et compteur dans le dossier', async () => {

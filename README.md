@@ -6,6 +6,7 @@ Outil de relevé terrain complémentaire à ProDevis.
 - **Étape 3** : photos par ouvrage (4 catégories, extérieure + intérieure obligatoires), compression 1600 px, métadonnées/GPS supprimées, doublons refusés, légendes, sauvegarde JSON avec photos.
 - **Étape 4** : document « Relevé de chantier » imprimable en PDF (synthèse + une page par ouvrage + cadre de validation technique) et export Excel (CSV) pour la ressaisie dans ProDevis. Exemples fictifs dans `docs/exemples/`.
 - **Étape 5** : aide à la prise de cotes. Catalogue illustré de 20 produits (menuiseries, portes de garage, volets, stores, portails, pergolas, carport), tableau de métrage par produit, **cotes dessinées sur la photo** avec code couleur (largeur bleu, hauteur rouge, retour d’habillage vert, tapée violet, recouvrement orange, profondeur bleu-vert, pente framboise), ajustables au doigt, inversion gauche/droite signalée, calcul de pente, guide des relevés.
+- **Étape 6** : fiche de relevé LDM intégrée au formulaire fenêtre / porte-fenêtre (gamme, nature des cotes DP / nettes / appro, appui, allège, poignée, fermeture, accessoires, GEA, habillages G/D/H/B, bavette, seuil, passage de volet roulant, quantité) et **remplacement de casse** avec l’abaque interne LDM du 27/04/2022 (cote nette indicative, contrôle de l’épaisseur du vitrage).
 Les données restent **uniquement sur l'appareil** (IndexedDB du navigateur). Aucun serveur, aucun envoi.
 
 ## Lancer
@@ -15,8 +16,8 @@ Prérequis : Node.js 20+ (aucune autre installation).
     npm run start:lan    # accessible depuis un smartphone du même Wi-Fi : http://<IP-du-PC>:8080
 
 ## Tester
-    npm test             # règles métier (48 tests)
-    npm run test:e2e     # navigateur réel, écran → stockage (51 tests ; nécessite Playwright + Chromium)
+    npm test             # règles métier (62 tests)
+    npm run test:e2e     # navigateur réel, écran → stockage (61 tests ; nécessite Playwright + Chromium)
 
 ## Structure
 - `js/config/regles.js` : **seuils de contrôle PROVISOIRES — à valider par le responsable technique**
@@ -28,6 +29,9 @@ Prérequis : Node.js 20+ (aucune autre installation).
 - `js/domain/export.js`, `js/ui/releve.js` : export tableur et document de relevé
 - `js/catalogue/produits.js` : **catalogue des produits (schémas, cotes, options, poses) — V1 À VALIDER par le responsable technique**
 - `js/catalogue/types-cotes.js` : code couleur des cotes
+- `js/catalogue/fiche-ldm.js` : champs de la fiche LDM (liste modifiable)
+- `js/config/abaque-casse.js` : **abaque interne de remplacement de casse (copie du document du 27/04/2022)**
+- `js/domain/casse.js` : calcul indicatif de la cote nette de vitrage
 - `js/domain/catalogue.js`, `js/ui/ouvrage-catalogue.js`, `js/ui/photo-cotes.js`, `js/ui/dessin.js`, `js/ui/guide.js`, `js/ui/choix-produit.js` : relevé guidé générique et cotes sur photo
 - `js/storage/db.js` : stockage local, création idempotente, brouillon
 - `js/app.js` : écrans (liste, nouveau dossier, détail)

@@ -7,10 +7,10 @@ import { illustration, svgCotesPhoto, traitParDefaut, versNormalise, depuisNorma
 
 const R = { valide: true, nbMesuresParDimension: 3, ecartMaxEntreMesuresMm: 10, ecartMaxDiagonalesMm: 10, coteMinMm: 200, coteMaxMm: 6000 };
 
-test('catalogue : les 20 produits (19 demandés + porte-fenêtre) sont présents', () => {
+test('catalogue : 21 produits (19 demandés + porte-fenêtre + remplacement de casse)', () => {
   const attendus = ['fenetre', 'porte_fenetre', 'baie_coulissante', 'porte_entree', 'garage_sectionnelle', 'garage_laterale', 'garage_enroulable',
     'vr_traditionnel', 'vr_tradi_tunnel', 'vr_monobloc', 'vr_blocbaie', 'volet_battant', 'store_banne_coffre', 'store_banne_monobloc', 'store_screen',
-    'portail_coulissant', 'portail_battant', 'pergola_orientable', 'pergola_pleine', 'carport'];
+    'portail_coulissant', 'portail_battant', 'pergola_orientable', 'pergola_pleine', 'carport', 'casse_vitrage'];
   assert.deepEqual(PRODUITS.map((p) => p.id).sort(), attendus.sort());
 });
 

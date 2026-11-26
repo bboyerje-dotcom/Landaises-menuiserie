@@ -1,7 +1,7 @@
 // Écran de relevé guidé d'un ouvrage (fenêtre / porte-fenêtre).
 import {
   TYPOLOGIES, OUVERTURES, NB_VANTAUX, MATERIAUX, TYPES_POSE, POINTS_DE_VUE, REFERENCES_MESURE,
-  ETATS_DORMANT, SENS, STATUTS_OUVRAGE, normaliserOuvrage, analyserOuvrage, prochainRepere,
+  ETATS_DORMANT, SENS, STATUTS_OUVRAGE, normaliserOuvrageComplet, analyserOuvrage, prochainRepere,
 } from '../domain/ouvrage.js';
 import { nouvelId } from '../domain/dossier.js';
 import { REGLES } from '../config/regles.js';
@@ -12,6 +12,8 @@ import {
 } from '../storage/db.js';
 import { monterPhotos } from './photos.js';
 import { monterPhotoCotes } from './photo-cotes.js';
+import { formulaireLdm, majVisibiliteLdm } from './fiche-ldm-form.js';
+import { valeursFormLdm } from '../catalogue/fiche-ldm.js';
 import { produit as produitCatalogue } from '../catalogue/produits.js';
 
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -83,7 +85,8 @@ function formulaire() {
       <div>${texte('localisation', 'Localisation (pièce)', { liste: 'pieces' })}</div>
     </div>
     <datalist id="pieces"><option>Séjour</option><option>Cuisine</option><option>Chambre 1</option><option>Chambre 2</option><option>Chambre 3</option><option>Salle de bain</option><option>WC</option><option>Entrée</option><option>Bureau</option><option>Garage</option></datalist>
-    ${texte('niveau', 'Niveau (RDC, R+1…)', { obl: false })}
+    <div class="deux egal"><div>${texte('niveau', 'Niveau (RDC, R+1…)', { obl: false })}</div>
+      <div><label for="quantite">Quantité</label><input id="quantite" name="quantite" type="number" min="1" inputmode="numeric"></div></div>
 
     <h2>2. Pose</h2>
     ${radios('typePose', 'Type de pose', TYPES_POSE)}
@@ -123,7 +126,10 @@ function formulaire() {
     <label for="observations">Observations</label>
     <textarea id="observations" name="observations"></textarea>
 
-    <h2>6. Photos</h2>
+    <h2>6. Fiche LDM : quincaillerie, finitions, volet</h2>
+    <div class="fiche-ldm" data-test="fiche-ldm">${formulaireLdm()}</div>
+
+    <h2>7. Photos</h2>
     <p class="doux aide">Enregistrées immédiatement sur l’appareil, réduites à 1600 px, sans position GPS.</p>
     <div id="photos-bloc"></div>
 
@@ -149,6 +155,7 @@ export async function ecranOuvrage(app, dossierId, ouvrageId, typologieInitiale 
   let brouillon = lireBrouillon(cle);
   const restaure = !!brouillon?.valeurs;
   if (!brouillon) brouillon = { id: existant?.id || nouvelId(), valeurs: existant ? valeursDepuis(existant) : {}, debut: null };
+  if (!brouillon.valeurs.quantite) brouillon.valeurs.quantite = '1';
 
   app.innerHTML = `
     <p class="doux"><a href="#/dossier/${encodeURIComponent(dossierId)}">← ${esc(dossier.reference)} · ${esc(dossier.clientNom)}</a></p>
@@ -196,11 +203,12 @@ export async function ecranOuvrage(app, dossierId, ouvrageId, typologieInitiale 
   }));
 
   const lire = () => lireValeurs(f);
-  const analyser = () => analyserOuvrage(normaliserOuvrage({ ...lire(), id: brouillon.id, dossierId }), { regles: REGLES, dossier, autres, photos: catPhotos });
+  const analyser = () => analyserOuvrage(normaliserOuvrageComplet({ ...lire(), id: brouillon.id, dossierId }), { regles: REGLES, dossier, autres, photos: catPhotos });
 
   const majEcran = () => {
     const v = lire();
     majVisibilite(f, v);
+    majVisibiliteLdm(f, normaliserOuvrageComplet(lireValeurs(f, true)));
     document.getElementById('schema').innerHTML = schemaMesures(v.pointDeVueMesure);
     const nb = Number(v.nbVantaux) || 1;
     document.getElementById('libelle-sens').textContent = nb >= 2 ? 'Vantail de service (s’ouvre en premier) : côté des paumelles' : 'Côté des paumelles (charnières)';
@@ -216,7 +224,7 @@ export async function ecranOuvrage(app, dossierId, ouvrageId, typologieInitiale 
   let photoCotes = null;
   let produitAffiche = null;
   const valeursCotes = () => {
-    const o = normaliserOuvrage({ ...lire(), id: brouillon.id, dossierId });
+    const o = normaliserOuvrageComplet({ ...lire(), id: brouillon.id, dossierId });
     const v = {};
     ['L1', 'L2', 'L3'].forEach((k, i) => { v[k] = o.largeurs[i]; });
     ['H1', 'H2', 'H3'].forEach((k, i) => { v[k] = o.hauteurs[i]; });
@@ -281,7 +289,7 @@ export async function ecranOuvrage(app, dossierId, ouvrageId, typologieInitiale 
     }
     f.querySelectorAll('.msg-champ').forEach((x) => { x.textContent = ''; });
     f.querySelectorAll('[aria-invalid]').forEach((x) => x.removeAttribute('aria-invalid'));
-    const o = normaliserOuvrage({ ...lire(), id: brouillon.id, dossierId });
+    const o = normaliserOuvrageComplet({ ...lire(), id: brouillon.id, dossierId });
     const a = analyserOuvrage(o, { regles: REGLES, dossier, autres, photos: catPhotos });
     if (!a.valideEnregistrement) {
       for (const [k, m] of Object.entries(a.erreurs)) {
@@ -335,7 +343,8 @@ function valeursDepuis(o) {
     pointDeVueMesure: o.pointDeVueMesure, referenceMesure: o.referenceMesure, typeOuverture: o.typeOuverture,
     nbVantaux: o.nbVantaux ? String(o.nbVantaux) : '', sens: o.sens, materiau: o.materiau,
     colorisInt: o.colorisInt, colorisExt: o.colorisExt, vitrage: o.vitrage, observations: o.observations,
-    altL: o.alt?.largeur ?? '', altH: o.alt?.hauteur ?? '',
+    altL: o.alt?.largeur ?? '', altH: o.alt?.hauteur ?? '', quantite: String(o.quantite || 1),
+    ...(o.ldm ? valeursFormLdm(o) : {}),
   };
   ['L1', 'L2', 'L3'].forEach((k, i) => { v[k] = o.largeurs?.[i] ?? ''; });
   ['H1', 'H2', 'H3'].forEach((k, i) => { v[k] = o.hauteurs?.[i] ?? ''; });
@@ -354,10 +363,11 @@ function remplir(f, valeurs) {
 }
 
 // Les champs masqués (non applicables) ne sont pas lus : pas de valeur périmée enregistrée.
-function lireValeurs(f) {
+// `tout` : lit aussi les champs masqués (sert seulement à calculer la visibilité).
+function lireValeurs(f, tout = false) {
   const o = {};
   for (const el of f.elements) {
-    if (!el.name || el.closest('[hidden]')) continue;
+    if (!el.name || (!tout && el.closest('[hidden]'))) continue;
     if (el.type === 'radio') { if (el.checked) o[el.name] = el.value; else o[el.name] ??= ''; }
     else if (el.type === 'checkbox') o[el.name] = el.checked;
     else o[el.name] = el.value;

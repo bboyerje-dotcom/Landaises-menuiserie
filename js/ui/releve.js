@@ -14,6 +14,7 @@ import { TYPES_COTE, couleurCote } from '../catalogue/types-cotes.js';
 import { optionVisible } from '../domain/catalogue.js';
 import { illustration, svgCotesPhoto } from './dessin.js';
 import { positionsParDefaut } from './photo-cotes.js';
+import { resumeLdm } from '../catalogue/fiche-ldm.js';
 
 const nomProduit = (o) => TYPOLOGIES[o.typologie] || produit(o.typologie)?.libelle || o.typologie;
 const nomPose = (o) => TYPES_POSE[o.typePose] || produit(o.produit)?.poses?.[o.typePose] || '—';
@@ -66,6 +67,8 @@ function ficheCatalogue(o, photos) {
         ${(p.options || []).filter((op) => optionVisible(op, o.options || {})).map((op) => L(op.libelle, op.choix[o.options?.[op.id]] || (op.obligatoire ? 'NON RENSEIGNÉ' : '—'))).join('') || L('—', '')}
       </table>
     </div>
+    ${o.calcul?.lignes?.length ? `<table class="kv calcul-doc" data-test="calcul-doc"><caption>Calcul indicatif (abaque interne) — ne vaut pas cote de commande</caption>
+      ${o.calcul.lignes.map(([k, v]) => L(k, v)).join('')}</table>` : ''}
     <div><strong>Observations</strong><p class="obs">${esc(o.observations) || '—'}</p></div>
     ${photos.length ? `<div class="photos-doc">${photos.map((ph) => figurePhoto(ph, o)).join('')}</div>` : '<p class="doux">Aucune photo.</p>'}
   </section>`;
@@ -87,6 +90,15 @@ function telecharger(contenu, type, nom) {
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+
+function ficheLdmDoc(o) {
+  if (!o.ldm) return '';
+  const lignes = resumeLdm(o);
+  const nettes = o.ldm.natureCotes === 'nettes';
+  return `<div class="fiche-ldm-doc" data-test="ldm-doc">
+    ${nettes ? '<p class="avert">Cotes « nettes à fabriquer » : validation technique obligatoire avant commande.</p>' : ''}
+    <table class="kv"><caption>Fiche LDM${o.quantite > 1 ? ` — quantité ${o.quantite}` : ''}</caption>${lignes.length ? lignes.map(([k, v]) => `<tr><th>${esc(k)}</th><td>${esc(v)}</td></tr>`).join('') : '<tr><td>—</td></tr>'}</table></div>`;
 }
 
 function ficheOuvrage(o, photos) {
@@ -111,6 +123,7 @@ function ficheOuvrage(o, photos) {
         ${L('Vitrage', o.vitrage)}
       </table>
     </div>
+    ${ficheLdmDoc(o)}
     <div class="defile"><table class="mesures"><caption>Mesures en mm — prises ${esc(lib(REFERENCES_MESURE, o.referenceMesure).toLowerCase())}, depuis l’${esc(lib(POINTS_DE_VUE, o.pointDeVueMesure).toLowerCase())}</caption>
       <thead><tr><th></th><th>1</th><th>2</th><th>3</th><th>Retenue</th></tr></thead>
       <tbody>
