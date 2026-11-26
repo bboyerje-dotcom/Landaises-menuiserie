@@ -16,6 +16,11 @@ Prérequis : Node.js 20+ (aucune autre installation).
     npm start            # http://localhost:8080 sur le PC
     npm run start:lan    # accessible depuis un smartphone du même Wi-Fi : http://<IP-du-PC>:8080
 
+## Tester sur téléphone (Netlify)
+Le fichier `netlify.toml` suffit : sur Netlify, importer le dépôt GitHub, choisir la branche,
+laisser la commande de build vide (dossier publié : `.`). L'adresse obtenue (https) s'ouvre sur le téléphone.
+Les données restent sur chaque appareil : exporter une sauvegarde régulièrement.
+
 ## Tester
     npm test             # règles métier (67 tests)
     npm run test:e2e     # navigateur réel, écran → stockage (64 tests ; nécessite Playwright + Chromium)
