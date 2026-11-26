@@ -120,5 +120,5 @@ export async function monterPhotos(conteneur, { dossierId, ouvrageId, onChange }
   }
 
   await recharger();
-  return { categories: () => [...new Set(photos.map((p) => p.categorie))] };
+  return { categories: () => [...new Set(photos.map((p) => p.categorie))], enCours: () => occupe };
 }

@@ -157,19 +157,22 @@ export async function ecranOuvrageCatalogue(app, dossierId, ouvrageId, p) {
   });
 
   let premier = true;
-  await monterPhotos(document.getElementById('photos-bloc'), {
+  const blocPhotos = await monterPhotos(document.getElementById('photos-bloc'), {
     dossierId, ouvrageId: brouillon.id,
     onChange: async (categories, nb) => {
       catPhotos = categories;
       if (premier) { premier = false; majEcran(); return; }
       ecrireBrouillon(brouillon, cle);
-      await photoCotes.recharger();
-      majEcran();
+      // 1. Statut en base d'abord : il doit être juste même si l'écran a été quitté entre-temps.
       const enBase = await lireOuvrage(brouillon.id);
       if (enBase) {
         const a = analyserOuvrageCatalogue(enBase, p, { regles: REGLES, autres, photos: categories });
         await majStatutOuvrage(enBase.id, { statut: a.statut, pointsAVerifier: [...a.manquants, ...a.alertes].map((x) => x.msg) }, `photos modifiées (${nb} au total)`);
       }
+      // 2. Écran ensuite, seulement s'il est toujours affiché.
+      if (!f.isConnected) return;
+      await photoCotes.recharger();
+      majEcran();
     },
   });
 
@@ -178,7 +181,13 @@ export async function ecranOuvrageCatalogue(app, dossierId, ouvrageId, p) {
     effacerBrouillon(cle);
     ecranOuvrageCatalogue(app, dossierId, ouvrageId, p);
   });
-  f.elements.typePose?.forEach?.((r) => r.addEventListener('change', () => { f.elements.poseConfirmee.checked = false; }));
+  // Changer le type de pose annule la confirmation client : brouillon et aperçu mis à jour aussitôt.
+  f.elements.typePose?.forEach?.((r) => r.addEventListener('change', () => {
+    f.elements.poseConfirmee.checked = false;
+    brouillon.valeurs = lire();
+    ecrireBrouillon(brouillon, cle);
+    majEcran();
+  }));
   f.querySelectorAll('[data-calculer]').forEach((b) => b.addEventListener('click', () => {
     const id = b.dataset.calculer;
     const val = (k) => Number(f.querySelector(`[data-calc="${k}"][data-pour="${id}"]`).value.replace(/\s/g, ''));
@@ -206,6 +215,10 @@ export async function ecranOuvrageCatalogue(app, dossierId, ouvrageId, p) {
     if (enCours) return;
     const bandeau = document.getElementById('bandeau-c');
     bandeau.innerHTML = '';
+    if (blocPhotos.enCours()) {
+      bandeau.innerHTML = '<div class="bandeau alerte" role="alert" data-test="photo-en-cours">Photo en cours de traitement : patientez quelques secondes puis enregistrez.</div>';
+      return;
+    }
     f.querySelectorAll('.msg-champ').forEach((x) => { x.textContent = ''; });
     f.querySelectorAll('[aria-invalid]').forEach((x) => x.removeAttribute('aria-invalid'));
     const o = normaliser();

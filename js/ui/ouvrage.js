@@ -238,21 +238,24 @@ export async function ecranOuvrage(app, dossierId, ouvrageId, typologieInitiale 
 
   // Photos : rattachées à l'identifiant de l'ouvrage (même s'il n'est pas encore enregistré).
   let premierChargement = true;
-  await monterPhotos(document.getElementById('photos-bloc'), {
+  const blocPhotos = await monterPhotos(document.getElementById('photos-bloc'), {
     dossierId,
     ouvrageId: brouillon.id,
     onChange: async (categories, nb) => {
       catPhotos = categories;
-      majEcran();
-      if (premierChargement) { premierChargement = false; return; }
+      if (premierChargement) { premierChargement = false; majEcran(); return; }
       ecrireBrouillon(brouillon, cle); // le brouillon garde l'identifiant auquel les photos sont liées
-      await photoCotes?.recharger();
+      // 1. Statut en base d'abord : il doit être juste même si l'écran a été quitté entre-temps.
       const enBase = await lireOuvrage(brouillon.id);
       if (enBase) {
         const a = analyserOuvrage(enBase, { regles: REGLES, dossier, autres, photos: categories });
         await majStatutOuvrage(enBase.id, { statut: a.statut, pointsAVerifier: [...a.manquants, ...a.alertes].map((p) => p.msg) },
           `photos modifiées (${nb} au total)`);
       }
+      // 2. Écran ensuite, seulement s'il est toujours affiché.
+      if (!f.isConnected) return;
+      majEcran();
+      await photoCotes?.recharger();
     },
   });
 
@@ -272,6 +275,10 @@ export async function ecranOuvrage(app, dossierId, ouvrageId, typologieInitiale 
     if (enCours) return;
     const bandeau = document.getElementById('bandeau-o');
     bandeau.innerHTML = '';
+    if (blocPhotos.enCours()) {
+      bandeau.innerHTML = '<div class="bandeau alerte" role="alert" data-test="photo-en-cours">Photo en cours de traitement : patientez quelques secondes puis enregistrez.</div>';
+      return;
+    }
     f.querySelectorAll('.msg-champ').forEach((x) => { x.textContent = ''; });
     f.querySelectorAll('[aria-invalid]').forEach((x) => x.removeAttribute('aria-invalid'));
     const o = normaliserOuvrage({ ...lire(), id: brouillon.id, dossierId });
