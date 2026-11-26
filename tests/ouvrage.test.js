@@ -9,7 +9,7 @@ const saisie = (o = {}) => ({
   L1: '1200', L2: '1 198', L3: '1201', H1: '1350', H2: '1352', H3: '1349', typeOuverture: 'francaise', nbVantaux: '2',
   sens: 'droite', materiau: 'alu', colorisInt: 'Blanc', colorisExt: 'RAL 7016', ...o,
 });
-const an = (o, ctx = {}) => analyserOuvrage(normaliserOuvrage(saisie(o)), { regles: R, ...ctx });
+const an = (o, ctx = {}) => analyserOuvrage(normaliserOuvrage(saisie(o)), { regles: R, photos: ['exterieur', 'interieur', 'support'], ...ctx });
 
 test('ouvrage complet → COMPLET, cotes retenues = plus petites', () => {
   const a = an();
@@ -108,4 +108,12 @@ test('repères proposés et tri naturel', () => {
   assert.equal(prochainRepere('fenetre', [{ repere: 'F1' }, { repere: 'F2' }]), 'F3');
   assert.equal(prochainRepere('porte_fenetre', [{ repere: 'F1' }]), 'PF1');
   assert.deepEqual([{ repere: 'F10' }, { repere: 'F2' }, { repere: 'F1' }].sort(trierParRepere).map((x) => x.repere), ['F1', 'F2', 'F10']);
+});
+
+test('photos extérieure et intérieure obligatoires pour COMPLET', () => {
+  const a = an({}, { photos: ['exterieur', 'support'] });
+  assert.equal(a.statut, 'a_verifier');
+  assert.deepEqual(a.manquants.map((m) => m.msg), ['Photo « Vue intérieure » manquante.']);
+  assert.equal(an({}, { photos: [] }).manquants.length, 2);
+  assert.equal(an({}, { photos: undefined }).manquants.length, 2, 'sans information photo : considérées absentes');
 });

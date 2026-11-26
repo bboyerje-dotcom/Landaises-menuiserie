@@ -3,13 +3,14 @@ import { test, before, after, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { demarrer } from '../server.mjs';
+import { imageJpeg, ajouterPhotosObligatoires } from './aide-e2e.js';
 
 const require = createRequire(import.meta.url);
 let chromium;
 try { ({ chromium } = require('playwright')); } catch { ({ chromium } = require('/opt/node-tools/node_modules/playwright')); }
 
-let srv, url, browser, ctx, page;
-before(async () => { srv = await demarrer(0); url = `http://127.0.0.1:${srv.address().port}/`; browser = await chromium.launch(); });
+let srv, url, browser, ctx, page, IMG;
+before(async () => { srv = await demarrer(0); url = `http://127.0.0.1:${srv.address().port}/`; browser = await chromium.launch(); IMG = await imageJpeg(browser); });
 after(async () => { await browser?.close(); srv?.close(); });
 beforeEach(async () => {
   await ctx?.close();
@@ -50,6 +51,7 @@ async function remplirComplet(p, o = {}) {
   await r('materiau', 'alu');
   await p.fill('#colorisInt', 'Blanc');
   await p.fill('#colorisExt', 'RAL 7016');
+  if (o.photos !== false) await ajouterPhotosObligatoires(p, IMG);
 }
 
 const ouvragesEnBase = (p) => p.evaluate(() => new Promise((ok) => {

@@ -2,7 +2,7 @@
 import { genererReference, prefixeReference, prochaineSequence } from '../domain/dossier.js';
 
 const NOM_BASE = 'pilotage-terrain';
-const VERSION = 2; // v1 : dossiers — v2 : + ouvrages
+const VERSION = 3; // v1 : dossiers — v2 : + ouvrages — v3 : + photos
 let dbPromise = null;
 
 function req(r) {
@@ -27,6 +27,11 @@ export function ouvrirDb() {
         if (ev.oldVersion < 2) {
           const o = db.createObjectStore('ouvrages', { keyPath: 'id' });
           o.createIndex('dossierId', 'dossierId');
+        }
+        if (ev.oldVersion < 3) {
+          const ph = db.createObjectStore('photos', { keyPath: 'id' });
+          ph.createIndex('ouvrageId', 'ouvrageId');
+          ph.createIndex('dossierId', 'dossierId');
         }
       };
       r.onsuccess = () => ok(r.result);
@@ -170,9 +175,116 @@ export async function lireOuvrage(id) {
 
 export async function toutesLesDonnees() {
   const db = await ouvrirDb();
-  const tx = db.transaction(['dossiers', 'ouvrages']);
-  const [dossiers, ouvrages] = await Promise.all([req(tx.objectStore('dossiers').getAll()), req(tx.objectStore('ouvrages').getAll())]);
-  return { dossiers, ouvrages };
+  const tx = db.transaction(['dossiers', 'ouvrages', 'photos']);
+  const [dossiers, ouvrages, photos] = await Promise.all(['dossiers', 'ouvrages', 'photos'].map((n) => req(tx.objectStore(n).getAll())));
+  return { dossiers, ouvrages, photos };
+}
+
+// Met à jour le statut d'un ouvrage déjà enregistré (ex. après ajout/suppression de photo)
+// sans créer de nouvelle version du relevé, mais avec une trace dans l'historique.
+export async function majStatutOuvrage(id, { statut, pointsAVerifier }, action, maintenant = new Date()) {
+  const db = await ouvrirDb();
+  return new Promise((ok, ko) => {
+    let resultat = null;
+    const tx = db.transaction('ouvrages', 'readwrite');
+    tx.oncomplete = () => ok(resultat);
+    tx.onerror = () => ko(tx.error);
+    const s = tx.objectStore('ouvrages');
+    s.get(id).onsuccess = (e) => {
+      const o = e.target.result;
+      if (!o) return; // ouvrage pas encore enregistré : rien à faire
+      resultat = {
+        ...o, statut, pointsAVerifier, modifieLe: maintenant.toISOString(),
+        historique: [...(o.historique || []), { version: o.version, le: maintenant.toISOString(), action }],
+      };
+      s.put(resultat);
+    };
+  });
+}
+
+// --- Photos ---
+export class PhotoEnDouble extends Error {
+  constructor() { super('Cette photo est déjà rattachée à l’ouvrage.'); this.name = 'PhotoEnDouble'; }
+}
+
+// Ajout atomique : refus si la même photo (même empreinte) est déjà sur l'ouvrage.
+export async function ajouterPhoto(photo) {
+  const db = await ouvrirDb();
+  return new Promise((ok, ko) => {
+    const tx = db.transaction('photos', 'readwrite');
+    let echec = null;
+    tx.oncomplete = () => ok(photo);
+    tx.onerror = () => ko(echec || tx.error);
+    tx.onabort = () => ko(echec || tx.error || new Error('Ajout annulé.'));
+    const s = tx.objectStore('photos');
+    s.index('ouvrageId').getAll(photo.ouvrageId).onsuccess = (e) => {
+      try {
+        if (photo.empreinte && e.target.result.some((p) => p.empreinte === photo.empreinte)) {
+          echec = new PhotoEnDouble();
+          tx.abort();
+          return;
+        }
+        s.add(photo);
+      } catch (err) { echec = err; tx.abort(); }
+    };
+  });
+}
+
+export async function listerPhotos(ouvrageId) {
+  const db = await ouvrirDb();
+  const t = await req(db.transaction('photos').objectStore('photos').index('ouvrageId').getAll(ouvrageId));
+  return t.sort((a, b) => (a.creeLe < b.creeLe ? -1 : 1));
+}
+
+export async function compterPhotosParOuvrage(dossierId) {
+  const db = await ouvrirDb();
+  const keys = await req(db.transaction('photos').objectStore('photos').index('dossierId').getAll(dossierId));
+  const n = {};
+  for (const p of keys) n[p.ouvrageId] = (n[p.ouvrageId] || 0) + 1;
+  return n;
+}
+
+export async function majLegendePhoto(id, legende) {
+  const db = await ouvrirDb();
+  return new Promise((ok, ko) => {
+    const tx = db.transaction('photos', 'readwrite');
+    tx.oncomplete = () => ok();
+    tx.onerror = () => ko(tx.error);
+    const s = tx.objectStore('photos');
+    s.get(id).onsuccess = (e) => { if (e.target.result) s.put({ ...e.target.result, legende }); };
+  });
+}
+
+export async function supprimerPhoto(id) {
+  const db = await ouvrirDb();
+  return new Promise((ok, ko) => {
+    const tx = db.transaction('photos', 'readwrite');
+    tx.oncomplete = () => ok();
+    tx.onerror = () => ko(tx.error);
+    tx.objectStore('photos').delete(id);
+  });
+}
+
+// Utilisé quand on abandonne un ouvrage jamais enregistré : ses photos sont supprimées.
+export async function supprimerPhotosOuvrage(ouvrageId) {
+  const db = await ouvrirDb();
+  return new Promise((ok, ko) => {
+    const tx = db.transaction('photos', 'readwrite');
+    tx.oncomplete = () => ok();
+    tx.onerror = () => ko(tx.error);
+    const s = tx.objectStore('photos');
+    s.index('ouvrageId').getAllKeys(ouvrageId).onsuccess = (e) => e.target.result.forEach((k) => s.delete(k));
+  });
+}
+
+// Espace disponible (estimation du navigateur), en octets.
+export async function espaceStockage() {
+  try {
+    const { usage = 0, quota = 0 } = (await navigator.storage?.estimate?.()) || {};
+    return { usage, quota, libre: quota ? quota - usage : null };
+  } catch {
+    return { usage: 0, quota: 0, libre: null };
+  }
 }
 
 // --- Brouillons de formulaire (survivent à un rechargement, un crash ou une coupure) ---

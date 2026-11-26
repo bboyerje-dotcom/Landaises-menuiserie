@@ -1,5 +1,6 @@
-// Règles métier d'un ouvrage (étape 2 : fenêtre et porte-fenêtre).
+// Règles métier d'un ouvrage (étape 2 : fenêtre et porte-fenêtre ; étape 3 : photos).
 // Module pur, testé avec `node --test`.
+import { manquesPhotos } from './photo.js';
 
 export const TYPOLOGIES = { fenetre: 'Fenêtre', porte_fenetre: 'Porte-fenêtre' };
 export const OUVERTURES = { francaise: 'À la française', oscillo_battant: 'Oscillo-battant', fixe: 'Fixe (non ouvrant)' };
@@ -79,7 +80,8 @@ const aDefinir = (v) => /^(a|à) d[ée]finir$/i.test(v);
 //  - erreurs   : empêchent l'enregistrement (saisie illisible ou dangereuse)
 //  - manquants : enregistrable, mais statut À VÉRIFIER
 //  - alertes   : enregistrable, mais statut À VÉRIFIER
-export function analyserOuvrage(o, { regles, dossier = null, autres = [] }) {
+// `photos` : catégories des photos déjà rattachées à l'ouvrage (ex. ['exterieur']).
+export function analyserOuvrage(o, { regles, dossier = null, autres = [], photos = [] }) {
   const erreurs = {};
   const manquants = [];
   const alertes = [];
@@ -115,6 +117,7 @@ export function analyserOuvrage(o, { regles, dossier = null, autres = [] }) {
   if (!o.colorisExt) manque('colorisExt', 'Coloris extérieur non renseigné.');
   if (o.typePose === 'renovation' && !(o.etatDormant in ETATS_DORMANT)) manque('etatDormant', 'État du dormant existant non renseigné.');
   if (o.hesitationPose && (o.alt.largeur == null || o.alt.hauteur == null)) manque('altL', 'Client hésitant : cotes du scénario alternatif (tableau) manquantes.');
+  manquants.push(...manquesPhotos(photos));
 
   // --- Alertes de cohérence
   if (o.materiau === 'a_definir') alerte('materiau', 'Matériau à définir.');

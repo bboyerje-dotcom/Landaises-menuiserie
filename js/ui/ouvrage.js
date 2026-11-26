@@ -8,17 +8,20 @@ import { REGLES } from '../config/regles.js';
 import {
   lireDossier, lireOuvrage, listerOuvrages, enregistrerOuvrage,
   lireBrouillon, ecrireBrouillon, effacerBrouillon, cleBrouillonOuvrage,
+  majStatutOuvrage, supprimerPhotosOuvrage,
 } from '../storage/db.js';
+import { monterPhotos } from './photos.js';
 
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const mm = (v) => (v == null ? '—' : `${v} mm`);
 
-export function carteOuvrage(dossierId, o) {
+export function carteOuvrage(dossierId, o, nbPhotos = 0) {
   const cls = o.statut === 'complet' ? 'ok' : 'alerte';
   return `<a class="carte" href="#/dossier/${encodeURIComponent(dossierId)}/ouvrage/${encodeURIComponent(o.id)}" data-test="ligne-ouvrage">
     <div class="ligne"><span class="ref">${esc(o.repere)} · ${esc(TYPOLOGIES[o.typologie])}</span>
       <span class="badge ${cls}" data-test="statut-ouvrage">${esc(STATUTS_OUVRAGE[o.statut])}</span></div>
     <div>${esc(o.localisation || 'Localisation ?')} · L ${mm(o.largeurRetenue)} × H ${mm(o.hauteurRetenue)}</div>
+    <div class="doux" data-test="nb-photos">📷 ${nbPhotos} photo${nbPhotos > 1 ? 's' : ''}</div>
     ${o.pointsAVerifier?.length ? `<ul class="points">${o.pointsAVerifier.map((p) => `<li>${esc(p)}</li>`).join('')}</ul>` : ''}
   </a>`;
 }
@@ -115,6 +118,10 @@ function formulaire() {
     <label for="observations">Observations</label>
     <textarea id="observations" name="observations"></textarea>
 
+    <h2>6. Photos</h2>
+    <p class="doux aide">Enregistrées immédiatement sur l’appareil, réduites à 1600 px, sans position GPS.</p>
+    <div id="photos-bloc"></div>
+
     <div id="apercu" class="apercu" aria-live="polite" data-test="apercu"></div>
     <div id="bandeau-o"></div>
     <div class="actions"><button class="btn plein" type="submit" id="enregistrer-ouvrage">Enregistrer l’ouvrage</button></div>
@@ -150,9 +157,15 @@ export async function ecranOuvrage(app, dossierId, ouvrageId) {
   const btn = document.getElementById('enregistrer-ouvrage');
   document.querySelectorAll('.picto-sens').forEach((el) => { el.innerHTML = pictoSens(el.dataset.sens, 1); });
   remplir(f, brouillon.valeurs);
-  document.getElementById('jeter-o')?.addEventListener('click', () => { effacerBrouillon(cle); ecranOuvrage(app, dossierId, ouvrageId); });
+  document.getElementById('jeter-o')?.addEventListener('click', async () => {
+    // Ouvrage jamais enregistré : ses photos partent avec le brouillon.
+    if (!existant && !(await lireOuvrage(brouillon.id))) await supprimerPhotosOuvrage(brouillon.id);
+    effacerBrouillon(cle);
+    ecranOuvrage(app, dossierId, ouvrageId);
+  });
 
   const autres = await listerOuvrages(dossierId);
+  let catPhotos = [];
   // Repère proposé automatiquement à la création.
   if (!existant && !f.elements.repere.value) {
     f.elements.typologie.forEach((r) => r.addEventListener('change', () => {
@@ -173,7 +186,7 @@ export async function ecranOuvrage(app, dossierId, ouvrageId) {
   }));
 
   const lire = () => lireValeurs(f);
-  const analyser = () => analyserOuvrage(normaliserOuvrage({ ...lire(), id: brouillon.id, dossierId }), { regles: REGLES, dossier, autres });
+  const analyser = () => analyserOuvrage(normaliserOuvrage({ ...lire(), id: brouillon.id, dossierId }), { regles: REGLES, dossier, autres, photos: catPhotos });
 
   const majEcran = () => {
     const v = lire();
@@ -190,6 +203,25 @@ export async function ecranOuvrage(app, dossierId, ouvrageId) {
       : `<div class="bandeau alerte">Statut à l’enregistrement : <strong>À VÉRIFIER</strong> (${points.length} point${points.length > 1 ? 's' : ''})<ul>${points.map((p) => `<li>${esc(p)}</li>`).join('')}</ul></div>`;
   };
   majEcran();
+
+  // Photos : rattachées à l'identifiant de l'ouvrage (même s'il n'est pas encore enregistré).
+  let premierChargement = true;
+  await monterPhotos(document.getElementById('photos-bloc'), {
+    dossierId,
+    ouvrageId: brouillon.id,
+    onChange: async (categories, nb) => {
+      catPhotos = categories;
+      majEcran();
+      if (premierChargement) { premierChargement = false; return; }
+      ecrireBrouillon(brouillon, cle); // le brouillon garde l'identifiant auquel les photos sont liées
+      const enBase = await lireOuvrage(brouillon.id);
+      if (enBase) {
+        const a = analyserOuvrage(enBase, { regles: REGLES, dossier, autres, photos: categories });
+        await majStatutOuvrage(enBase.id, { statut: a.statut, pointsAVerifier: [...a.manquants, ...a.alertes].map((p) => p.msg) },
+          `photos modifiées (${nb} au total)`);
+      }
+    },
+  });
 
   let enCours = false;
   f.addEventListener('input', (e) => {
@@ -210,7 +242,7 @@ export async function ecranOuvrage(app, dossierId, ouvrageId) {
     f.querySelectorAll('.msg-champ').forEach((x) => { x.textContent = ''; });
     f.querySelectorAll('[aria-invalid]').forEach((x) => x.removeAttribute('aria-invalid'));
     const o = normaliserOuvrage({ ...lire(), id: brouillon.id, dossierId });
-    const a = analyserOuvrage(o, { regles: REGLES, dossier, autres });
+    const a = analyserOuvrage(o, { regles: REGLES, dossier, autres, photos: catPhotos });
     if (!a.valideEnregistrement) {
       for (const [k, m] of Object.entries(a.erreurs)) {
         const el = document.getElementById('err-' + k);

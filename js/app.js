@@ -5,7 +5,7 @@ import {
 import {
   ouvrirDb, creerDossier, listerDossiers, lireDossier,
   lireBrouillon, ecrireBrouillon, effacerBrouillon, demanderStockagePersistant, dateLocaleIso,
-  listerOuvrages, toutesLesDonnees,
+  listerOuvrages, toutesLesDonnees, compterPhotosParOuvrage,
 } from './storage/db.js';
 import { ecranOuvrage, carteOuvrage } from './ui/ouvrage.js';
 import { trierParRepere } from './domain/ouvrage.js';
@@ -15,6 +15,13 @@ const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '
 const dateFr = (iso) => (iso ? new Date(iso.length === 10 ? iso + 'T12:00:00' : iso).toLocaleDateString('fr-FR') : '');
 const heureFr = (iso) => new Date(iso).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' });
 const duree = (s) => (s == null ? '—' : s < 60 ? `${s} s` : `${Math.floor(s / 60)} min ${String(s % 60).padStart(2, '0')} s`);
+
+function enBase64(buf) {
+  const b = new Uint8Array(buf);
+  let s = '';
+  for (let i = 0; i < b.length; i += 0x8000) s += String.fromCharCode.apply(null, b.subarray(i, i + 0x8000));
+  return btoa(s);
+}
 
 // ------------------------------------------------------------------ Routage
 async function router() {
@@ -66,7 +73,9 @@ async function ecranListe() {
   });
   document.getElementById('export').onclick = async () => {
     const donnees = await toutesLesDonnees();
-    const blob = new Blob([JSON.stringify({ exporteLe: new Date().toISOString(), version: 2, ...donnees }, null, 2)], { type: 'application/json' });
+    // Les images (binaire) sont converties en base64 pour tenir dans le fichier JSON.
+    donnees.photos = donnees.photos.map((p) => ({ ...p, donnees: enBase64(p.donnees), miniature: enBase64(p.miniature) }));
+    const blob = new Blob([JSON.stringify({ exporteLe: new Date().toISOString(), version: 3, ...donnees }, null, 2)], { type: 'application/json' });
     const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: `sauvegarde-pilotage-${dateLocaleIso(new Date())}.json` });
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
@@ -232,6 +241,7 @@ async function ecranDossier(id, cree) {
   }
   const ouvrages = (await listerOuvrages(d.id)).sort(trierParRepere);
   const nbComplets = ouvrages.filter((o) => o.statut === 'complet').length;
+  const nbPhotos = await compterPhotosParOuvrage(d.id);
   const L = (k, v) => `<dt>${k}</dt><dd>${esc(v) || '—'}</dd>`;
   app.innerHTML = `
     ${cree ? `<div class="bandeau ok" role="status" data-test="cree">Dossier enregistré sur cet appareil.</div>` : ''}
@@ -247,7 +257,7 @@ async function ecranDossier(id, cree) {
     </dl></div>
     <h2>Ouvrages (${ouvrages.length})</h2>
     ${ouvrages.length ? `<p class="doux" data-test="synthese-ouvrages">${nbComplets} COMPLET · ${ouvrages.length - nbComplets} À VÉRIFIER</p>` : '<p class="doux">Aucun ouvrage relevé.</p>'}
-    ${ouvrages.map((o) => carteOuvrage(d.id, o)).join('')}
+    ${ouvrages.map((o) => carteOuvrage(d.id, o, nbPhotos[o.id] || 0)).join('')}
     <div class="actions"><a class="btn plein" href="#/dossier/${encodeURIComponent(d.id)}/ouvrage/nouveau" data-test="ajouter-ouvrage">+ Ajouter un ouvrage</a></div>
     <div class="actions"><a class="btn" href="#/">Retour à la liste</a><a class="btn secondaire" href="#/nouveau">+ Autre dossier</a></div>`;
 }
