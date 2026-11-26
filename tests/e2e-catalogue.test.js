@@ -136,6 +136,7 @@ test('volet roulant traditionnel complet → COMPLET ; option alimentation masqu
   assert.equal(await page.isVisible('[data-option="alimentation"]'), true);
   await r(page, 'opt_alimentation', 'oui');
   await r(page, 'opt_coteManoeuvre', 'gauche');
+  await r(page, 'opt_coteManoeuvre_vue', 'interieur');
   await r(page, 'opt_lames', 'alu');
   await ajouterPhoto(page, 'interieur', variante(IMG, 'i'), 'i.jpg');
   await ajouterPhoto(page, 'exterieur', variante(IMG, 'e'), 'e.jpg');

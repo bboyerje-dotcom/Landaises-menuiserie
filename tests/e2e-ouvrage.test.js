@@ -50,6 +50,7 @@ async function remplirComplet(p, o = {}) {
   await r('typeOuverture', 'francaise');
   await r('nbVantaux', '2');
   await r('sens', 'droite');
+  await r('sensVueDe', 'interieur');
   await r('materiau', 'alu');
   await p.fill('#colorisInt', 'Blanc');
   await p.fill('#colorisExt', 'RAL 7016');

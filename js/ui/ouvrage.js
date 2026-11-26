@@ -1,7 +1,7 @@
 // Écran de relevé guidé d'un ouvrage (fenêtre / porte-fenêtre).
 import {
   TYPOLOGIES, OUVERTURES, NB_VANTAUX, MATERIAUX, TYPES_POSE, POINTS_DE_VUE, REFERENCES_MESURE,
-  ETATS_DORMANT, SENS, STATUTS_OUVRAGE, normaliserOuvrageComplet, analyserOuvrage, prochainRepere,
+  ETATS_DORMANT, SENS, STATUTS_OUVRAGE, normaliserOuvrageComplet, analyserOuvrage, prochainRepere, vueSens,
 } from '../domain/ouvrage.js';
 import { nouvelId } from '../domain/dossier.js';
 import { REGLES } from '../config/regles.js';
@@ -14,6 +14,7 @@ import { monterPhotos } from './photos.js';
 import { monterPhotoCotes } from './photo-cotes.js';
 import { formulaireLdm, majVisibiliteLdm } from './fiche-ldm-form.js';
 import { valeursFormLdm } from '../catalogue/fiche-ldm.js';
+import { vuDe, texteAvecVue, INVERSE_GD } from '../domain/point-de-vue.js';
 import { produit as produitCatalogue } from '../catalogue/produits.js';
 
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -113,9 +114,13 @@ function formulaire() {
     ${radios('typeOuverture', 'Type d’ouverture', OUVERTURES)}
     ${radios('nbVantaux', 'Nombre de vantaux', NB_VANTAUX)}
     <div data-si="ouvrant">
-      <fieldset data-champ="sens"><legend><span id="libelle-sens">Côté des paumelles (charnières)</span>, <u>vu de l’intérieur</u> <span class="obl" aria-hidden="true">*</span></legend>
+      <fieldset data-champ="sensVueDe"><legend>Sens décrit <span class="obl" aria-hidden="true">*</span></legend>
+        <div class="choix"><label><input type="radio" name="sensVueDe" value="interieur"> Vu de l’intérieur</label><label><input type="radio" name="sensVueDe" value="exterieur"> Vu de l’extérieur</label></div>
+        <div class="msg-champ" id="err-sensVueDe"></div></fieldset>
+      <fieldset data-champ="sens"><legend><span id="libelle-sens">Côté des paumelles (charnières)</span>, <u id="vue-sens">point de vue à préciser</u> <span class="obl" aria-hidden="true">*</span></legend>
         <div class="choix sens">${Object.keys(SENS).map((v) => `<label><input type="radio" name="sens" value="${v}"><span class="picto-sens" data-sens="${v}"></span></label>`).join('')}</div>
         <div class="msg-champ" id="err-sens"></div></fieldset>
+      <p class="equivalent" id="eq-sens" data-test="eq-sens"></p>
     </div>
 
     <h2>5. Configuration</h2>
@@ -213,6 +218,8 @@ export async function ecranOuvrage(app, dossierId, ouvrageId, typologieInitiale 
     const nb = Number(v.nbVantaux) || 1;
     document.getElementById('libelle-sens').textContent = nb >= 2 ? 'Vantail de service (s’ouvre en premier) : côté des paumelles' : 'Côté des paumelles (charnières)';
     document.querySelectorAll('.picto-sens').forEach((el) => { el.innerHTML = pictoSens(el.dataset.sens, nb); });
+    document.getElementById('vue-sens').textContent = vuDe(v.sensVueDe);
+    document.getElementById('eq-sens').textContent = v.sens && v.sensVueDe ? `Relevé : ${texteAvecVue(v.sens, SENS, INVERSE_GD, v.sensVueDe)}.` : '';
     const a = analyser();
     document.getElementById('retenues').innerHTML = `Cotes retenues (plus petite mesure) : <strong>L ${mm(a.largeurRetenue)}</strong> × <strong>H ${mm(a.hauteurRetenue)}</strong>`;
     const points = [...a.manquants, ...a.alertes].map((p) => p.msg);
@@ -341,7 +348,7 @@ function valeursDepuis(o) {
     typologie: o.typologie, repere: o.repere, localisation: o.localisation, niveau: o.niveau, typePose: o.typePose,
     poseConfirmee: o.poseConfirmee, hesitationPose: o.hesitationPose, etatDormant: o.etatDormant,
     pointDeVueMesure: o.pointDeVueMesure, referenceMesure: o.referenceMesure, typeOuverture: o.typeOuverture,
-    nbVantaux: o.nbVantaux ? String(o.nbVantaux) : '', sens: o.sens, materiau: o.materiau,
+    nbVantaux: o.nbVantaux ? String(o.nbVantaux) : '', sens: o.sens, sensVueDe: vueSens(o), materiau: o.materiau,
     colorisInt: o.colorisInt, colorisExt: o.colorisExt, vitrage: o.vitrage, observations: o.observations,
     altL: o.alt?.largeur ?? '', altH: o.alt?.hauteur ?? '', quantite: String(o.quantite || 1),
     ...(o.ldm ? valeursFormLdm(o) : {}),

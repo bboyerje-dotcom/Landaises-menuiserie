@@ -22,7 +22,7 @@ export const REFERENCES_MESURE = {
   baie_brute: 'Baie brute (neuf)',
 };
 export const ETATS_DORMANT = { bon: 'Bon', moyen: 'Moyen', mauvais: 'Mauvais' };
-// Le sens est TOUJOURS décrit vu de l'intérieur (convention unique de l'outil).
+// Le sens est décrit avec un point de vue choisi au cas par cas (sensVueDe : interieur | exterieur).
 export const SENS = { gauche: 'Gauche', droite: 'Droite' };
 export const STATUTS_OUVRAGE = { complet: 'COMPLET', a_verifier: 'À VÉRIFIER', valide_technique: 'VALIDÉ TECHNIQUEMENT' };
 
@@ -62,6 +62,7 @@ export function normaliserOuvrage(s = {}) {
     etatDormant: ligne(s.etatDormant),
     alt: { largeur: lireMm(s.altL), hauteur: lireMm(s.altH) },
     sens: ligne(s.sens),
+    sensVueDe: ligne(s.sensVueDe),
     colorisInt: ligne(s.colorisInt),
     colorisExt: ligne(s.colorisExt),
     vitrage: ligne(s.vitrage),
@@ -118,6 +119,7 @@ export function analyserOuvrage(o, { regles, dossier = null, autres = [], photos
   if (L.length < regles.nbMesuresParDimension) manque('L1', `${L.length}/${regles.nbMesuresParDimension} largeurs mesurées.`);
   if (H.length < regles.nbMesuresParDimension) manque('H1', `${H.length}/${regles.nbMesuresParDimension} hauteurs mesurées.`);
   if (o.typeOuverture !== 'fixe' && !(o.sens in SENS)) manque('sens', 'Sens d’ouverture non renseigné.');
+  else if (o.typeOuverture !== 'fixe' && !['interieur', 'exterieur'].includes(o.sensVueDe)) manque('sensVueDe', 'Sens d’ouverture : point de vue (intérieur / extérieur) non précisé.');
   if (!o.colorisInt) manque('colorisInt', 'Coloris intérieur non renseigné.');
   if (!o.colorisExt) manque('colorisExt', 'Coloris extérieur non renseigné.');
   if (o.typePose === 'renovation' && !(o.etatDormant in ETATS_DORMANT)) manque('etatDormant', 'État du dormant existant non renseigné.');
@@ -152,6 +154,9 @@ export function analyserOuvrage(o, { regles, dossier = null, autres = [], photos
   const statut = manquants.length === 0 && alertes.length === 0 ? 'complet' : 'a_verifier';
   return { valideEnregistrement, erreurs, manquants, alertes, statut, largeurRetenue: lr, hauteurRetenue: hr };
 }
+
+// Point de vue du sens ; relevés antérieurs au choix : convention « vu de l'intérieur ».
+export const vueSens = (o) => o.sensVueDe || (o.sens ? 'interieur' : '');
 
 // Prochain repère libre : F1, F2… (fenêtres) / PF1, PF2… (portes-fenêtres)
 export function prochainRepere(typologie, autres) {

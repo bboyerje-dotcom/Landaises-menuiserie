@@ -53,7 +53,10 @@ const facultatif = (c) => ({ ...c, obligatoire: false });
 const opt = (id, libelle, choix, o = {}) => ({ id, libelle, choix, obligatoire: true, ...o });
 const MATERIAU_MENUISERIE = opt('materiau', 'Matériau', { alu: 'Aluminium', pvc: 'PVC', bois: 'Bois', mixte: 'Mixte', a_definir: 'À définir' });
 const MANOEUVRE = opt('manoeuvre', 'Manœuvre', { sangle: 'Sangle', treuil: 'Treuil / manivelle', filaire: 'Moteur filaire', radio: 'Moteur radio', solaire: 'Solaire', a_definir: 'À définir' });
-const COTE_MANOEUVRE_INT = opt('coteManoeuvre', 'Côté manœuvre / moteur (vu de l’INTÉRIEUR)', { gauche: 'Gauche', droite: 'Droite' });
+// vueDe : l'utilisateur précise intérieur / extérieur ; inverse : équivalent vu de l'autre côté ;
+// vueHistorique : convention des relevés enregistrés avant ce choix.
+const GD_INV = { gauche: 'droite', droite: 'gauche' };
+const COTE_MANOEUVRE_INT = opt('coteManoeuvre', 'Côté manœuvre / moteur', { gauche: 'Gauche', droite: 'Droite' }, { vueDe: true, inverse: GD_INV, vueHistorique: 'interieur' });
 const ALIM = opt('alimentation', 'Alimentation électrique à proximité', { oui: 'Oui', non: 'Non', a_verifier: 'À vérifier' }, { siOption: { manoeuvre: ['filaire', 'radio'] } });
 const MOTORISATION = opt('motorisation', 'Motorisation', { non: 'Non', oui: 'Oui', a_definir: 'À définir' });
 const ALIM_MOTEUR = opt('alimentation', 'Alimentation électrique à proximité', { oui: 'Oui', non: 'Non', a_verifier: 'À vérifier' }, { siOption: { motorisation: ['oui'] } });
@@ -121,13 +124,14 @@ export const PRODUITS = [
     poses: POSES_MENUISERIE,
     options: [MATERIAU_MENUISERIE,
       opt('rails', 'Vantaux / rails', { v2r2: '2 vantaux, 2 rails', v3r3: '3 vantaux, 3 rails', v4r2: '4 vantaux, 2 rails', galandage: 'Galandage', a_definir: 'À définir' }),
-      opt('service', 'Vantail de service et coulissement (vu de l’EXTÉRIEUR)', { d_vers_g: 'Droite → gauche', g_vers_d: 'Gauche → droite' }),
+      opt('service', 'Vantail de service et sens de coulissement', { d_vers_g: 'Droite → gauche', g_vers_d: 'Gauche → droite' },
+        { vueDe: true, inverse: { d_vers_g: 'g_vers_d', g_vers_d: 'd_vers_g' }, vueHistorique: 'exterieur' }),
       opt('seuil', 'Seuil', { standard: 'Standard', encastre: 'Encastré / réduit', a_definir: 'À définir' })],
     photos: ['exterieur', 'interieur'],
   },
   {
     id: 'porte_entree', famille: 'menuiserie', libelle: 'Porte d’entrée', prefixe: 'PTE', formeAttendue: 'haute',
-    aide: 'Mesurer la baie en 3 points. Sens : côté des paumelles et poussant/tirant, vu de l’EXTÉRIEUR.',
+    aide: 'Mesurer la baie en 3 points. Sens : côté des paumelles et poussant/tirant, en précisant le point de vue (intérieur ou extérieur).',
     dessin: () => R(100, 8, 100, 204) + R(107, 15, 86, 197, 'd-fin') + R(180, 105, 6, 22, 'd-plein')
       + L(186, 20, 112, 110, 'd-ouv') + L(112, 110, 186, 205, 'd-ouv') + sol(),
     cotes: [...lh3(100, 8, 100, 204, 'tableau ou dormant'), ...diagonales(100, 8, 100, 204),
@@ -136,7 +140,8 @@ export const PRODUITS = [
       facultatif(cote('HS', 'HS', 'Hauteur de marche / seuil', 'autre', [215, 200, 215, 212]))],
     poses: POSES_MENUISERIE,
     options: [MATERIAU_MENUISERIE,
-      opt('ouverture', 'Ouverture (vu de l’EXTÉRIEUR)', { poussant_g: 'Poussant, paumelles à gauche', poussant_d: 'Poussant, paumelles à droite', tirant_g: 'Tirant, paumelles à gauche', tirant_d: 'Tirant, paumelles à droite' }),
+      opt('ouverture', 'Ouverture', { poussant_g: 'Poussant, paumelles à gauche', poussant_d: 'Poussant, paumelles à droite', tirant_g: 'Tirant, paumelles à gauche', tirant_d: 'Tirant, paumelles à droite' },
+        { vueDe: true, inverse: { poussant_g: 'tirant_d', poussant_d: 'tirant_g', tirant_g: 'poussant_d', tirant_d: 'poussant_g' }, vueHistorique: 'exterieur' }),
       opt('serrure', 'Serrure', { manuelle: 'Manuelle', automatique: 'Automatique', motorisee: 'Motorisée', a_definir: 'À définir' })],
     photos: ['exterieur', 'interieur'],
   },
@@ -166,7 +171,7 @@ export const PRODUITS = [
       cote('EO', 'EO', 'Écoinçon côté opposé', 'autre', [240, 120, 292, 120]),
       cote('LR', 'LR', 'Longueur de mur de refoulement', 'profondeur', [10, 206, 70, 216])],
     poses: { sous_linteau: 'Derrière la baie', a_definir: 'À définir' },
-    options: [opt('refoulement', 'Côté refoulement (vu de l’INTÉRIEUR)', { gauche: 'Gauche', droite: 'Droite' }), MOTORISATION, ALIM_MOTEUR],
+    options: [opt('refoulement', 'Côté refoulement', { gauche: 'Gauche', droite: 'Droite' }, { vueDe: true, inverse: GD_INV, vueHistorique: 'interieur' }), MOTORISATION, ALIM_MOTEUR],
     photos: ['exterieur', 'interieur'],
   },
   {
@@ -303,7 +308,7 @@ export const PRODUITS = [
       cote('EP', 'EP', 'Épaisseur des piliers', 'profondeur', [110, 52, 130, 52]),
       cote('PS', '°', 'Pente du sol (passage)', 'pente', [130, 212, 260, 206], { unite: 'deg' })],
     poses: { entre_piliers: 'Entre piliers', applique: 'En applique (derrière piliers)', a_definir: 'À définir' },
-    options: [opt('refoulement', 'Côté refoulement (vu de l’INTÉRIEUR / cour)', { gauche: 'Gauche', droite: 'Droite' }), MOTORISATION, ALIM_MOTEUR],
+    options: [opt('refoulement', 'Côté refoulement', { gauche: 'Gauche', droite: 'Droite' }, { vueDe: true, inverse: GD_INV, vueHistorique: 'interieur' }), MOTORISATION, ALIM_MOTEUR],
     photos: ['exterieur', 'interieur'],
   },
   {

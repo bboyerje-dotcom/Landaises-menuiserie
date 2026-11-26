@@ -1,6 +1,6 @@
 // Relevé guidé générique d'un produit du catalogue :
 // produit → photo (affichée tout de suite) → tableau de métrage → cotes dessinées sur la photo.
-import { normaliserOuvrageCatalogue, analyserOuvrageCatalogue, optionVisible, penteDegres } from '../domain/catalogue.js';
+import { normaliserOuvrageCatalogue, analyserOuvrageCatalogue, optionVisible, penteDegres, texteOption, optionsAvecVueHistorique } from '../domain/catalogue.js';
 import { nouvelId } from '../domain/dossier.js';
 import { STATUTS_OUVRAGE } from '../domain/ouvrage.js';
 import { TYPES_COTE, couleurCote } from '../catalogue/types-cotes.js';
@@ -28,7 +28,11 @@ function valeursDepuis(o, p) {
   const v = { repere: o.repere, localisation: o.localisation, niveau: o.niveau, quantite: String(o.quantite || 1), pointDeVueMesure: o.pointDeVueMesure,
     typePose: o.typePose, poseConfirmee: o.poseConfirmee, observations: o.observations };
   for (const c of p.cotes) v['cote_' + c.id] = o.cotes?.[c.id] ?? '';
-  for (const op of p.options || []) v['opt_' + op.id] = o.options?.[op.id] ?? '';
+  const opts = optionsAvecVueHistorique(p, o.options);
+  for (const op of p.options || []) {
+    v['opt_' + op.id] = opts[op.id] ?? '';
+    if (op.vueDe) v['opt_' + op.id + '_vue'] = opts[op.id + '_vue'] ?? '';
+  }
   return v;
 }
 
@@ -97,7 +101,8 @@ export async function ecranOuvrageCatalogue(app, dossierId, ouvrageId, p) {
       <div id="calcul" data-test="calcul"></div>
       </div>
 
-      ${(p.options || []).length ? `<h2>4. Options</h2>${p.options.map((op) => `<div data-option="${op.id}">${radios('opt_' + op.id, op.libelle, op.choix, { obl: op.obligatoire })}</div>`).join('')}` : ''}
+      ${(p.options || []).length ? `<h2>4. Options</h2>${p.options.map((op) => `<div data-option="${op.id}">${radios('opt_' + op.id, op.libelle, op.choix, { obl: op.obligatoire })}${op.vueDe
+        ? `<div class="vue-de">${radios('opt_' + op.id + '_vue', `${op.libelle} : décrit`, { interieur: 'Vu de l’intérieur', exterieur: 'Vu de l’extérieur' })}</div><p class="equivalent" data-test="eq-${op.id}" id="eq-${op.id}"></p>` : ''}</div>`).join('')}` : ''}
       <label for="observations">Observations</label>
       <textarea id="observations" name="observations"></textarea>
 
@@ -140,6 +145,10 @@ export async function ecranOuvrageCatalogue(app, dossierId, ouvrageId, p) {
     if (pose) pose.hidden = !f.querySelector('[name="typePose"]:checked');
     const o = normaliser();
     const a = analyser(o);
+    for (const op of p.options || []) if (op.vueDe) {
+      const el = document.getElementById('eq-' + op.id);
+      if (el) el.textContent = o.options[op.id] && o.options[op.id + '_vue'] ? `Relevé : ${texteOption(op, o.options)}.` : '';
+    }
     document.getElementById('retenues').innerHTML = `Cotes retenues (plus petite mesure) : <strong>L ${mm(a.largeurRetenue)}</strong> × <strong>H ${mm(a.hauteurRetenue)}</strong>`;
     document.getElementById('calcul').innerHTML = a.calcul?.lignes?.length
       ? `<div class="carte calcul"><strong>Calcul indicatif (abaque interne)</strong><table class="kv-simple">${a.calcul.lignes.map(([k, v]) => `<tr><th>${esc(k)}</th><td>${esc(v)}</td></tr>`).join('')}</table>

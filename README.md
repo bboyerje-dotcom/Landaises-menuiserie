@@ -7,6 +7,7 @@ Outil de relevé terrain complémentaire à ProDevis.
 - **Étape 4** : document « Relevé de chantier » imprimable en PDF (synthèse + une page par ouvrage + cadre de validation technique) et export Excel (CSV) pour la ressaisie dans ProDevis. Exemples fictifs dans `docs/exemples/`.
 - **Étape 5** : aide à la prise de cotes. Catalogue illustré de 20 produits (menuiseries, portes de garage, volets, stores, portails, pergolas, carport), tableau de métrage par produit, **cotes dessinées sur la photo** avec code couleur (largeur bleu, hauteur rouge, retour d’habillage vert, tapée violet, recouvrement orange, profondeur bleu-vert, pente framboise), ajustables au doigt, inversion gauche/droite signalée, calcul de pente, guide des relevés.
 - **Étape 6** : fiche de relevé LDM intégrée au formulaire fenêtre / porte-fenêtre (gamme, nature des cotes DP / nettes / appro, appui, allège, poignée, fermeture, accessoires, GEA, habillages G/D/H/B, bavette, seuil, passage de volet roulant, quantité) et **remplacement de casse** avec l’abaque interne LDM du 27/04/2022 (cote nette indicative, contrôle de l’épaisseur du vitrage).
+- **Point de vue au cas par cas** : sens d’ouverture et options dépendant du côté (coulissement, ouverture de porte, côté manœuvre, refoulement) décrits « vu de l’intérieur » ou « vu de l’extérieur », avec l’équivalent vu de l’autre côté affiché, imprimé et exporté. Les relevés antérieurs gardent leur convention d’origine.
 Les données restent **uniquement sur l'appareil** (IndexedDB du navigateur). Aucun serveur, aucun envoi.
 
 ## Lancer
@@ -16,8 +17,8 @@ Prérequis : Node.js 20+ (aucune autre installation).
     npm run start:lan    # accessible depuis un smartphone du même Wi-Fi : http://<IP-du-PC>:8080
 
 ## Tester
-    npm test             # règles métier (62 tests)
-    npm run test:e2e     # navigateur réel, écran → stockage (61 tests ; nécessite Playwright + Chromium)
+    npm test             # règles métier (67 tests)
+    npm run test:e2e     # navigateur réel, écran → stockage (64 tests ; nécessite Playwright + Chromium)
 
 ## Structure
 - `js/config/regles.js` : **seuils de contrôle PROVISOIRES — à valider par le responsable technique**
@@ -42,6 +43,7 @@ Prérequis : Node.js 20+ (aucune autre installation).
 - Les références `LDM-AAMMJJ-NNN` sont uniques **par appareil** (deux téléphones peuvent produire la même).
 - Effacer les données du navigateur efface les dossiers : utiliser « Exporter une sauvegarde ».
 - Ne jamais mettre de grille tarifaire ou de prix d'achat dans le code (il pourrait être hébergé).
+- ~~Convention de point de vue unique~~ : remplacée par un choix explicite à chaque relevé.
 - Seuils de contrôle provisoires tant que `REGLES.valide` vaut `false` (bandeau affiché).
 - Le statut VALIDÉ TECHNIQUEMENT n'est pas encore attribuable (nécessite des rôles).
 - Photos stockées sur l'appareil : prévoir l'espace (≈ 200–400 Ko par photo) et exporter régulièrement.

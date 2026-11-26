@@ -42,7 +42,7 @@ async function fenetreComplete(p) {
   await r(p, 'typePose', 'renovation'); await p.check('#poseConfirmee'); await r(p, 'etatDormant', 'bon');
   await r(p, 'pointDeVueMesure', 'interieur'); await r(p, 'referenceMesure', 'dormant_existant');
   for (const [k, v] of Object.entries({ L1: '1200', L2: '1198', L3: '1201', H1: '1350', H2: '1352', H3: '1349' })) await p.fill('#' + k, v);
-  await r(p, 'typeOuverture', 'francaise'); await r(p, 'nbVantaux', '2'); await r(p, 'sens', 'droite'); await r(p, 'materiau', 'alu');
+  await r(p, 'typeOuverture', 'francaise'); await r(p, 'nbVantaux', '2'); await r(p, 'sens', 'droite'); await r(p, 'sensVueDe', 'interieur'); await r(p, 'materiau', 'alu');
   await p.fill('#colorisInt', 'Blanc'); await p.fill('#colorisExt', 'RAL 7016');
   await ajouterPhoto(p, 'exterieur', variante(IMG, 'e'), 'e.jpg');
   await ajouterPhoto(p, 'interieur', variante(IMG, 'i'), 'i.jpg');

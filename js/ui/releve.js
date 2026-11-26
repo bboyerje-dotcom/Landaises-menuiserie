@@ -11,7 +11,9 @@ import { lireDossier, listerOuvrages, listerPhotos } from '../storage/db.js';
 import { pictoSens } from './ouvrage.js';
 import { produit } from '../catalogue/produits.js';
 import { TYPES_COTE, couleurCote } from '../catalogue/types-cotes.js';
-import { optionVisible } from '../domain/catalogue.js';
+import { optionVisible, texteOption, optionsAvecVueHistorique } from '../domain/catalogue.js';
+import { vuDe, texteAvecVue, INVERSE_GD } from '../domain/point-de-vue.js';
+import { vueSens } from '../domain/ouvrage.js';
 import { illustration, svgCotesPhoto } from './dessin.js';
 import { positionsParDefaut } from './photo-cotes.js';
 import { resumeLdm } from '../catalogue/fiche-ldm.js';
@@ -64,7 +66,7 @@ function ficheCatalogue(o, photos) {
         ${p.poses ? L('Type de pose', nomPose(o)) + L('Confirmée par le client', o.poseConfirmee ? `Oui, le ${dateFr(o.poseConfirmeeLe)}` : 'NON') : L('Type de pose', 'Sans objet')}
       </table>
       <table class="kv"><caption>Options</caption>
-        ${(p.options || []).filter((op) => optionVisible(op, o.options || {})).map((op) => L(op.libelle, op.choix[o.options?.[op.id]] || (op.obligatoire ? 'NON RENSEIGNÉ' : '—'))).join('') || L('—', '')}
+        ${(p.options || []).filter((op) => optionVisible(op, o.options || {})).map((op) => L(op.libelle, texteOption(op, optionsAvecVueHistorique(p, o.options)) || (op.obligatoire ? 'NON RENSEIGNÉ' : '—'))).join('') || L('—', '')}
       </table>
     </div>
     ${o.calcul?.lignes?.length ? `<table class="kv calcul-doc" data-test="calcul-doc"><caption>Calcul indicatif (abaque interne) — ne vaut pas cote de commande</caption>
@@ -133,8 +135,8 @@ function ficheOuvrage(o, photos) {
       </tbody>
     </table></div>
     <div class="col2">
-      <div><strong>Sens d’ouverture (vu de l’intérieur)</strong>
-        ${ouvrant && o.sens ? `<div class="picto-doc">${pictoSens(o.sens, o.nbVantaux || 1)}</div><div>${o.nbVantaux >= 2 ? 'Vantail de service : ' : 'Paumelles à '}${esc(lib(SENS, o.sens).toLowerCase())}</div>` : `<p>${ouvrant ? 'NON RENSEIGNÉ' : 'Sans objet (fixe)'}</p>`}
+      <div data-test="sens-doc"><strong>Sens d’ouverture (${esc(vuDe(vueSens(o)))})</strong>
+        ${ouvrant && o.sens ? `<div class="picto-doc">${pictoSens(o.sens, o.nbVantaux || 1)}</div><div>${o.nbVantaux >= 2 ? 'Vantail de service, paumelles : ' : 'Paumelles : '}${esc(texteAvecVue(o.sens, SENS, INVERSE_GD, vueSens(o)))}</div>` : `<p>${ouvrant ? 'NON RENSEIGNÉ' : 'Sans objet (fixe)'}</p>`}
       </div>
       <div><strong>Observations</strong><p class="obs">${esc(o.observations) || '—'}</p></div>
     </div>

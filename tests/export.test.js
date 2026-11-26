@@ -33,7 +33,8 @@ test('ligne ProDevis : une ligne par ouvrage, colonnes dans l’ordre de la conf
   const v = Object.fromEntries(entetes.map((e, i) => [e, lignes[0][i]]));
   assert.equal(v['Repère'], 'F1');
   assert.equal(v['Largeur retenue (mm)'], 1198);
-  assert.equal(v['Sens (paumelles, vu de l’intérieur)'], 'Droite');
+  assert.equal(v['Sens relevé (paumelles)'], 'Droite (vu de l’intérieur) — soit gauche vu de l’extérieur', 'ancien relevé : convention intérieur');
+  assert.equal(v['Sens ramené vu de l’intérieur'], 'Droite');
   assert.equal(v['Pose confirmée client'], 'Oui (26/11/2026)');
   assert.equal(v['Statut relevé'], 'À VÉRIFIER');
   assert.equal(v['Points à vérifier'], 'Coloris à définir. | Écart');
@@ -45,7 +46,7 @@ test('ligne ProDevis : une ligne par ouvrage, colonnes dans l’ordre de la conf
 
 test('ouvrage fixe : sens « Sans objet »', () => {
   const { entetes, lignes } = lignesExport(COLONNES_PRODEVIS, dossier, [{ ...ouvrage, typeOuverture: 'fixe', sens: '' }]);
-  assert.equal(lignes[0][entetes.indexOf('Sens (paumelles, vu de l’intérieur)')], 'Sans objet');
+  assert.equal(lignes[0][entetes.indexOf('Sens relevé (paumelles)')], 'Sans objet');
 });
 
 test('nom de fichier horodaté avec la référence', () => {

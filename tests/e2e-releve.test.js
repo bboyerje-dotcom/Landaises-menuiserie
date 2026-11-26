@@ -61,7 +61,7 @@ test('document : en-tête, avertissement, synthèse, une fiche par ouvrage, phot
   assert.equal(await page.locator('[data-test=synthese] tbody tr').count(), 2);
   assert.equal(await page.locator('[data-test=fiche-ouvrage]').count(), 2);
   assert.match(doc, /Confirmée par le client\s*Oui, le 26\/11\/2026/);
-  assert.match(doc, /Vantail de service : droite/);
+  assert.match(doc, /Vantail de service, paumelles : Droite \(vu de l’intérieur\) — soit gauche vu de l’extérieur/, 'ancien relevé : convention intérieur conservée');
   assert.match(doc, /Sens d’ouverture non renseigné/);
   assert.match(doc, /Façade nord/);
   assert.ok(await page.$eval('img[data-photo]', (i) => i.complete && i.naturalWidth === 1200), 'photo décodée');

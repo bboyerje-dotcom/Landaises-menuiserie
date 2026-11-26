@@ -67,7 +67,7 @@ test('photo : traits par défaut proportionnels, conversion normalisée réversi
 const saisieVolet = (o = {}) => ({
   id: 'x', dossierId: 'd', repere: 'vrt1', localisation: 'Salon', pointDeVueMesure: 'interieur', typePose: 'caisson_existant', poseConfirmee: true,
   cote_L1: '1200', cote_L2: '1203', cote_H1: '1500', cote_H2: '1502', cote_LC: '1180', cote_HC: '250', cote_PC: '260',
-  opt_manoeuvre: 'radio', opt_coteManoeuvre: 'gauche', opt_alimentation: 'oui', opt_lames: 'alu', ...o,
+  opt_manoeuvre: 'radio', opt_coteManoeuvre: 'gauche', opt_coteManoeuvre_vue: 'interieur', opt_alimentation: 'oui', opt_lames: 'alu', ...o,
 });
 const an = (o, ph = ['interieur', 'exterieur']) => {
   const p = produit('vr_traditionnel');

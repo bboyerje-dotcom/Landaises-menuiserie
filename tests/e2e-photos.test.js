@@ -44,7 +44,7 @@ async function dossierEtOuvrage(p, { complet = true } = {}) {
   await r('typePose', 'renovation'); await p.check('#poseConfirmee'); await r('etatDormant', 'bon');
   await r('pointDeVueMesure', 'interieur'); await r('referenceMesure', 'dormant_existant');
   for (const [k, v] of Object.entries({ L1: '1200', L2: '1198', L3: '1201', H1: '1350', H2: '1352', H3: '1349' })) await p.fill('#' + k, v);
-  await r('typeOuverture', 'francaise'); await r('nbVantaux', '2'); await r('sens', 'droite'); await r('materiau', 'alu');
+  await r('typeOuverture', 'francaise'); await r('nbVantaux', '2'); await r('sens', 'droite'); await r('sensVueDe', 'interieur'); await r('materiau', 'alu');
   await p.fill('#colorisInt', 'Blanc'); await p.fill('#colorisExt', 'RAL 7016');
   await remplirLdm(p);
 }

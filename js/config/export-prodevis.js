@@ -4,6 +4,9 @@
 // (ou renommez les en-têtes). Aucune autre modification n'est nécessaire.
 import { produit } from '../catalogue/produits.js';
 import { resumeLdm } from '../catalogue/fiche-ldm.js';
+import { texteOption, optionsAvecVueHistorique } from '../domain/catalogue.js';
+import { texteAvecVue, versVue, INVERSE_GD } from '../domain/point-de-vue.js';
+import { vueSens } from '../domain/ouvrage.js';
 import {
   TYPOLOGIES, OUVERTURES, MATERIAUX, TYPES_POSE, POINTS_DE_VUE, REFERENCES_MESURE, ETATS_DORMANT, SENS, STATUTS_OUVRAGE,
 } from '../domain/ouvrage.js';
@@ -24,7 +27,8 @@ export const COLONNES_PRODEVIS = [
   { entete: 'Matériau', valeur: (o) => lib(MATERIAUX, o.materiau) || (o.options?.materiau ? lib(MATERIAUX, o.options.materiau) || o.options.materiau : '') },
   { entete: 'Type d’ouverture', valeur: (o) => lib(OUVERTURES, o.typeOuverture) },
   { entete: 'Nb vantaux', valeur: (o) => o.nbVantaux ?? '' },
-  { entete: 'Sens (paumelles, vu de l’intérieur)', valeur: (o) => (o.typeOuverture === 'fixe' ? 'Sans objet' : lib(SENS, o.sens)) },
+  { entete: 'Sens relevé (paumelles)', valeur: (o) => (o.typeOuverture === 'fixe' ? 'Sans objet' : texteAvecVue(o.sens, SENS, INVERSE_GD, vueSens(o))) },
+  { entete: 'Sens ramené vu de l’intérieur', valeur: (o) => (o.typeOuverture === 'fixe' ? 'Sans objet' : lib(SENS, versVue(o.sens, INVERSE_GD, vueSens(o), 'interieur'))) },
   { entete: 'Largeur retenue (mm)', valeur: (o) => o.largeurRetenue ?? '' },
   { entete: 'Hauteur retenue (mm)', valeur: (o) => o.hauteurRetenue ?? '' },
   { entete: 'Autres cotes', valeur: (o) => {
@@ -36,7 +40,8 @@ export const COLONNES_PRODEVIS = [
   { entete: 'Options produit', valeur: (o) => {
     const p = produit(o.produit);
     if (!p || o.kind !== 'catalogue') return '';
-    return (p.options || []).filter((op) => o.options?.[op.id]).map((op) => `${op.libelle} : ${op.choix[o.options[op.id]] || o.options[op.id]}`).join(' | ');
+    const opts = optionsAvecVueHistorique(p, o.options);
+    return (p.options || []).filter((op) => opts[op.id]).map((op) => `${op.libelle} : ${texteOption(op, opts)}`).join(' | ');
   } },
   { entete: 'Fiche LDM', valeur: (o) => (o.ldm ? resumeLdm(o).map(([k, v]) => `${k} : ${v}`).join(' | ') : '') },
   { entete: 'Calcul indicatif (abaque)', valeur: (o) => (o.calcul?.lignes || []).filter(([k]) => k !== 'Source').map(([k, v]) => `${k} : ${v}`).join(' | ') },

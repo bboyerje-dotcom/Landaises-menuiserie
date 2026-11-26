@@ -58,7 +58,10 @@ export async function monterPhotos(conteneur, { dossierId, ouvrageId, onChange }
   async function recharger() {
     photos = await listerPhotos(ouvrageId);
     rendre();
-    onChange?.([...new Set(photos.map((p) => p.categorie))], photos.length);
+    // On attend la mise à jour du formulaire (statut, cotes sur photo) avant d'afficher
+    // « photo enregistrée » : le message signifie que tout est à jour. Une erreur côté
+    // formulaire ne doit pas empêcher le message.
+    try { await onChange?.([...new Set(photos.map((p) => p.categorie))], photos.length); } catch (e) { console.error(e); }
   }
 
   async function traiter(categorie, fichiers) {

@@ -78,7 +78,7 @@ test('produit casse : épaisseur décimale acceptée, calcul intégré au statut
 const fen = (o = {}) => ({
   id: 'o1', typologie: 'fenetre', repere: 'F1', localisation: 'Séjour', typePose: 'renovation', poseConfirmee: true, etatDormant: 'bon',
   pointDeVueMesure: 'interieur', referenceMesure: 'dormant_existant', L1: '1200', L2: '1198', L3: '1201', H1: '1350', H2: '1352', H3: '1349',
-  typeOuverture: 'francaise', nbVantaux: '2', sens: 'droite', materiau: 'alu', colorisInt: 'Blanc', colorisExt: 'RAL 7016',
+  typeOuverture: 'francaise', nbVantaux: '2', sens: 'droite', sensVueDe: 'interieur', materiau: 'alu', colorisInt: 'Blanc', colorisExt: 'RAL 7016',
   ldm_gamme: 'g65', ldm_natureCotes: 'dp', ldm_appui: 'rentrant', ldm_poignee: 'gy_standard', ldm_fermeture: 'pts3', ...o,
 });
 const anF = (o) => analyserOuvrage(normaliserOuvrageComplet(fen(o)), { regles: R, photos: ['exterieur', 'interieur'] });

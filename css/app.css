@@ -225,3 +225,6 @@ dd { margin: 0; overflow-wrap: anywhere; white-space: pre-wrap; }
 .kv-simple th { text-align: left; font-weight: 600; padding: 3px 8px 3px 0; vertical-align: top; width: 40%; }
 .kv-simple td { padding: 3px 0; overflow-wrap: anywhere; }
 .fiche-ldm-doc .avert { margin: 6px 0; }
+.equivalent { margin: 4px 0 10px; padding: 8px 10px; border-radius: 8px; background: var(--ok-fond); color: var(--ok); font-weight: 600; }
+.equivalent:empty { display: none; }
+.vue-de legend { font-size: 15px; }

@@ -7,7 +7,7 @@ const saisie = (o = {}) => ({
   id: 'o1', dossierId: 'd1', typologie: 'fenetre', repere: 'f1', localisation: 'Séjour', typePose: 'renovation',
   poseConfirmee: true, etatDormant: 'bon', pointDeVueMesure: 'interieur', referenceMesure: 'dormant_existant',
   L1: '1200', L2: '1 198', L3: '1201', H1: '1350', H2: '1352', H3: '1349', typeOuverture: 'francaise', nbVantaux: '2',
-  sens: 'droite', materiau: 'alu', colorisInt: 'Blanc', colorisExt: 'RAL 7016', ...o,
+  sens: 'droite', sensVueDe: 'interieur', materiau: 'alu', colorisInt: 'Blanc', colorisExt: 'RAL 7016', ...o,
 });
 const an = (o, ctx = {}) => analyserOuvrage(normaliserOuvrage(saisie(o)), { regles: R, photos: ['exterieur', 'interieur', 'support'], ...ctx });
 

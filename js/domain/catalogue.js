@@ -2,6 +2,7 @@
 // Module pur, testé avec `node --test`.
 import { lireMm } from './mesures.js';
 import { CATEGORIES_PHOTO } from './photo.js';
+import { texteAvecVue } from './point-de-vue.js';
 
 const ligne = (v) => (typeof v === 'string' ? v.trim().replace(/\s+/g, ' ') : '');
 
@@ -24,12 +25,27 @@ export function optionVisible(opt, options) {
   return Object.entries(opt.siOption).every(([k, vals]) => vals.includes(options[k]));
 }
 
+// Relevés enregistrés avant le choix du point de vue : on reprend la convention de l'époque.
+export function optionsAvecVueHistorique(produit, options = {}) {
+  const res = { ...options };
+  for (const op of produit?.options || []) if (op.vueDe && res[op.id] && !res[op.id + '_vue'] && op.vueHistorique) res[op.id + '_vue'] = op.vueHistorique;
+  return res;
+}
+
+// Texte d'une option pour le PDF et l'export (avec point de vue et équivalent si besoin).
+export function texteOption(op, options) {
+  const v = options?.[op.id];
+  if (!v) return '';
+  return op.vueDe ? texteAvecVue(v, op.choix, op.inverse, options[op.id + '_vue']) : op.choix[v] || v;
+}
+
 export function normaliserOuvrageCatalogue(s, produit) {
   const cotes = {};
   for (const c of produit.cotes) cotes[c.id] = c.unite === 'deg' || c.decimal ? lireDegres(s['cote_' + c.id]) : lireMm(s['cote_' + c.id]);
   const options = {};
   for (const o of produit.options || []) options[o.id] = ligne(s['opt_' + o.id]);
   for (const o of produit.options || []) if (!optionVisible(o, options)) options[o.id] = '';
+  for (const o of produit.options || []) if (o.vueDe) options[o.id + '_vue'] = options[o.id] ? ligne(s['opt_' + o.id + '_vue']) : '';
   return {
     id: s.id, dossierId: s.dossierId, kind: 'catalogue', produit: produit.id, typologie: produit.id,
     repere: ligne(s.repere).toUpperCase(), localisation: ligne(s.localisation), niveau: ligne(s.niveau),
@@ -72,6 +88,7 @@ export function analyserOuvrageCatalogue(o, produit, { regles, autres = [], phot
     if (!optionVisible(op, o.options)) continue;
     const v = o.options[op.id];
     if (!v) { if (op.obligatoire) manque('opt_' + op.id, `${op.libelle} : non renseigné.`); }
+    else if (op.vueDe && !['interieur', 'exterieur'].includes(o.options[op.id + '_vue'])) manque('opt_' + op.id + '_vue', `${op.libelle} : point de vue (intérieur / extérieur) non précisé.`);
     else if (v === 'a_definir' || v === 'a_verifier') alerte('opt_' + op.id, `${op.libelle} : ${op.choix[v].toLowerCase()}.`);
   }
   // Calcul propre au produit (ex. abaque de remplacement de casse)
