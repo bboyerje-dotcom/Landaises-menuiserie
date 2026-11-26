@@ -11,14 +11,17 @@ import {
   majStatutOuvrage, supprimerPhotosOuvrage,
 } from '../storage/db.js';
 import { monterPhotos } from './photos.js';
+import { monterPhotoCotes } from './photo-cotes.js';
+import { produit as produitCatalogue } from '../catalogue/produits.js';
 
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const mm = (v) => (v == null ? '—' : `${v} mm`);
 
 export function carteOuvrage(dossierId, o, nbPhotos = 0) {
+  const nom = TYPOLOGIES[o.typologie] || produitCatalogue(o.typologie)?.libelle || o.typologie;
   const cls = o.statut === 'complet' ? 'ok' : 'alerte';
   return `<a class="carte" href="#/dossier/${encodeURIComponent(dossierId)}/ouvrage/${encodeURIComponent(o.id)}" data-test="ligne-ouvrage">
-    <div class="ligne"><span class="ref">${esc(o.repere)} · ${esc(TYPOLOGIES[o.typologie])}</span>
+    <div class="ligne"><span class="ref">${esc(o.repere)} · ${esc(nom)}${o.quantite > 1 ? ` ×${o.quantite}` : ''}</span>
       <span class="badge ${cls}" data-test="statut-ouvrage">${esc(STATUTS_OUVRAGE[o.statut])}</span></div>
     <div>${esc(o.localisation || 'Localisation ?')} · L ${mm(o.largeurRetenue)} × H ${mm(o.hauteurRetenue)}</div>
     <div class="doux" data-test="nb-photos">📷 ${nbPhotos} photo${nbPhotos > 1 ? 's' : ''}</div>
@@ -96,6 +99,8 @@ function formulaire() {
     <div class="trois">${cote('H1', 'H1 gauche')}${cote('H2', 'H2 milieu')}${cote('H3', 'H3 droite')}</div>
     <div class="deux egal">${cote('D1', 'Diagonale D1 (facultatif)')}${cote('D2', 'Diagonale D2 (facultatif)')}</div>
     <div class="retenues" id="retenues" data-test="retenues"></div>
+    <h3>Cotes sur la photo</h3>
+    <div id="photo-cotes"></div>
     <div data-si="hesitationPose" class="carte">
       <strong>Scénario alternatif : cotes en tableau</strong>
       <div class="deux egal">${cote('altL', 'Largeur tableau')}${cote('altH', 'Hauteur tableau')}</div>
@@ -129,7 +134,7 @@ function formulaire() {
 }
 
 // ---------- Écran
-export async function ecranOuvrage(app, dossierId, ouvrageId) {
+export async function ecranOuvrage(app, dossierId, ouvrageId, typologieInitiale = null) {
   const dossier = await lireDossier(dossierId);
   if (!dossier) {
     app.innerHTML = `<div class="bandeau erreur" role="alert">Dossier introuvable sur cet appareil.</div><a class="btn" href="#/">Retour</a>`;
@@ -166,8 +171,13 @@ export async function ecranOuvrage(app, dossierId, ouvrageId) {
 
   const autres = await listerOuvrages(dossierId);
   let catPhotos = [];
+  // Typologie choisie sur l'écran « Quel produit relever ? »
+  if (!existant && typologieInitiale && !brouillon.valeurs.typologie && f.elements.typologie) {
+    f.elements.typologie.forEach((r) => { r.checked = r.value === typologieInitiale; });
+    if (!f.elements.repere.value) f.elements.repere.value = prochainRepere(typologieInitiale, autres);
+  }
   // Repère proposé automatiquement à la création.
-  if (!existant && !f.elements.repere.value) {
+  if (!existant) {
     f.elements.typologie.forEach((r) => r.addEventListener('change', () => {
       if (brouillon.repereManuel) return;
       f.elements.repere.value = prochainRepere(r.value, autres);
@@ -202,6 +212,28 @@ export async function ecranOuvrage(app, dossierId, ouvrageId) {
       ? `<div class="bandeau ok">Statut à l’enregistrement : <strong>COMPLET</strong></div>`
       : `<div class="bandeau alerte">Statut à l’enregistrement : <strong>À VÉRIFIER</strong> (${points.length} point${points.length > 1 ? 's' : ''})<ul>${points.map((p) => `<li>${esc(p)}</li>`).join('')}</ul></div>`;
   };
+  // Cotes dessinées sur la photo (même code couleur que le guide).
+  let photoCotes = null;
+  let produitAffiche = null;
+  const valeursCotes = () => {
+    const o = normaliserOuvrage({ ...lire(), id: brouillon.id, dossierId });
+    const v = {};
+    ['L1', 'L2', 'L3'].forEach((k, i) => { v[k] = o.largeurs[i]; });
+    ['H1', 'H2', 'H3'].forEach((k, i) => { v[k] = o.hauteurs[i]; });
+    ['D1', 'D2'].forEach((k, i) => { v[k] = o.diagonales[i]; });
+    return Object.fromEntries(Object.entries(v).filter(([, x]) => x != null && !Number.isNaN(x)));
+  };
+  const monterCotes = async () => {
+    const typ = f.querySelector('[name="typologie"]:checked')?.value || 'fenetre';
+    if (produitAffiche === typ && photoCotes) return photoCotes.rafraichir();
+    produitAffiche = typ;
+    photoCotes = await monterPhotoCotes(document.getElementById('photo-cotes'), {
+      produit: produitCatalogue(typ), ouvrageId: brouillon.id, valeurs: valeursCotes,
+      pointDeVue: () => f.querySelector('[name="pointDeVueMesure"]:checked')?.value || '',
+    });
+  };
+  await monterCotes();
+  f.addEventListener('input', () => { monterCotes(); });
   majEcran();
 
   // Photos : rattachées à l'identifiant de l'ouvrage (même s'il n'est pas encore enregistré).
@@ -214,6 +246,7 @@ export async function ecranOuvrage(app, dossierId, ouvrageId) {
       majEcran();
       if (premierChargement) { premierChargement = false; return; }
       ecrireBrouillon(brouillon, cle); // le brouillon garde l'identifiant auquel les photos sont liées
+      await photoCotes?.recharger();
       const enBase = await lireOuvrage(brouillon.id);
       if (enBase) {
         const a = analyserOuvrage(enBase, { regles: REGLES, dossier, autres, photos: categories });

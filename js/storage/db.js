@@ -255,6 +255,18 @@ export async function majLegendePhoto(id, legende) {
   });
 }
 
+// Positions des cotes dessinées sur une photo : { coteId: [x1, y1, x2, y2] } normalisés 0–1.
+export async function majAnnotationsPhoto(id, annotations) {
+  const db = await ouvrirDb();
+  return new Promise((ok, ko) => {
+    const tx = db.transaction('photos', 'readwrite');
+    tx.oncomplete = () => ok();
+    tx.onerror = () => ko(tx.error);
+    const s = tx.objectStore('photos');
+    s.get(id).onsuccess = (e) => { if (e.target.result) s.put({ ...e.target.result, annotations }); };
+  });
+}
+
 export async function supprimerPhoto(id) {
   const db = await ouvrirDb();
   return new Promise((ok, ko) => {

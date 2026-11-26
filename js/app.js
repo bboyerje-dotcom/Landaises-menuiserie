@@ -9,6 +9,11 @@ import {
 } from './storage/db.js';
 import { ecranOuvrage, carteOuvrage } from './ui/ouvrage.js';
 import { ecranReleve } from './ui/releve.js';
+import { ecranGuide } from './ui/guide.js';
+import { ecranChoixProduit } from './ui/choix-produit.js';
+import { ecranOuvrageCatalogue } from './ui/ouvrage-catalogue.js';
+import { produit } from './catalogue/produits.js';
+import { lireOuvrage } from './storage/db.js';
 import { trierParRepere } from './domain/ouvrage.js';
 
 const app = document.getElementById('app');
@@ -29,10 +34,13 @@ async function router() {
   const h = location.hash || '#/';
   try {
     if (h.startsWith('#/nouveau')) return ecranNouveau();
+    if (h.startsWith('#/guide')) return ecranGuide(app);
     const mr = h.match(/^#\/dossier\/([^/?]+)\/releve/);
     if (mr) return ecranReleve(app, decodeURIComponent(mr[1]));
-    const mo = h.match(/^#\/dossier\/([^/?]+)\/ouvrage\/([^/?]+)/);
-    if (mo) return ecranOuvrage(app, decodeURIComponent(mo[1]), mo[2] === 'nouveau' ? null : decodeURIComponent(mo[2]));
+    const mp = h.match(/^#\/dossier\/([^/?]+)\/produit/);
+    if (mp) return ecranChoixProduit(app, decodeURIComponent(mp[1]));
+    const mo = h.match(/^#\/dossier\/([^/?]+)\/ouvrage\/([^/?]+)(?:\?produit=([a-z_]+))?/);
+    if (mo) return routeOuvrage(decodeURIComponent(mo[1]), mo[2] === 'nouveau' ? null : decodeURIComponent(mo[2]), mo[3]);
     const m = h.match(/^#\/dossier\/([^?]+)(\?cree=1)?/);
     if (m) return ecranDossier(decodeURIComponent(m[1]), !!m[2]);
     return ecranListe();
@@ -41,6 +49,18 @@ async function router() {
   }
 }
 window.addEventListener('hashchange', router);
+
+// Fenêtre / porte-fenêtre : formulaire détaillé ; autres produits : relevé guidé du catalogue.
+async function routeOuvrage(dossierId, ouvrageId, produitId) {
+  if (!ouvrageId) {
+    const p = produit(produitId);
+    if (p && p.formulaire !== 'fenetre') return ecranOuvrageCatalogue(app, dossierId, null, p);
+    return ecranOuvrage(app, dossierId, null, p?.id);
+  }
+  const o = await lireOuvrage(ouvrageId);
+  if (o?.kind === 'catalogue' && produit(o.produit)) return ecranOuvrageCatalogue(app, dossierId, ouvrageId, produit(o.produit));
+  return ecranOuvrage(app, dossierId, ouvrageId);
+}
 
 function erreurGlobale(e) {
   console.error(e);
@@ -55,6 +75,7 @@ async function ecranListe() {
   app.innerHTML = `
     <h1>Dossiers</h1>
     <div class="actions"><a class="btn plein" href="#/nouveau" data-test="nouveau">+ Nouveau dossier</a></div>
+    <div class="actions"><a class="btn secondaire plein" href="#/guide" data-test="guide">📐 Guide des relevés (schémas et cotes)</a></div>
     ${dossiers.length > 3 ? `<input class="recherche" type="search" placeholder="Rechercher : nom, commune, référence…" aria-label="Rechercher" id="q">` : ''}
     <div id="liste">${dossiers.length ? '' : '<p class="doux">Aucun dossier pour l’instant.</p>'}</div>
     <div class="actions">
@@ -261,7 +282,7 @@ async function ecranDossier(id, cree) {
     <h2>Ouvrages (${ouvrages.length})</h2>
     ${ouvrages.length ? `<p class="doux" data-test="synthese-ouvrages">${nbComplets} COMPLET · ${ouvrages.length - nbComplets} À VÉRIFIER</p>` : '<p class="doux">Aucun ouvrage relevé.</p>'}
     ${ouvrages.map((o) => carteOuvrage(d.id, o, nbPhotos[o.id] || 0)).join('')}
-    <div class="actions"><a class="btn plein" href="#/dossier/${encodeURIComponent(d.id)}/ouvrage/nouveau" data-test="ajouter-ouvrage">+ Ajouter un ouvrage</a></div>
+    <div class="actions"><a class="btn plein" href="#/dossier/${encodeURIComponent(d.id)}/produit" data-test="ajouter-ouvrage">+ Ajouter un ouvrage</a></div>
     <div class="actions"><a class="btn secondaire plein" href="#/dossier/${encodeURIComponent(d.id)}/releve" data-test="ouvrir-releve">📄 Relevé PDF et export ProDevis</a></div>
     <div class="actions"><a class="btn" href="#/">Retour à la liste</a><a class="btn secondaire" href="#/nouveau">+ Autre dossier</a></div>`;
 }

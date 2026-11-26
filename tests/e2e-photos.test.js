@@ -23,6 +23,7 @@ beforeEach(async () => {
   await ctx?.close();
   ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, acceptDownloads: true });
   page = await ctx.newPage();
+  page.setDefaultTimeout(10000);
   page.on('pageerror', (e) => { throw e; });
 });
 
@@ -34,6 +35,7 @@ async function dossierEtOuvrage(p, { complet = true } = {}) {
   await p.click('#enregistrer');
   await p.waitForSelector('[data-test=cree]');
   await p.click('[data-test=ajouter-ouvrage]');
+  await p.click('[data-test=produit-fenetre]');
   await p.waitForSelector('[data-test=nb-exterieur]');
   const r = (n, v) => p.check(`input[name="${n}"][value="${v}"]`);
   await r('typologie', 'fenetre');

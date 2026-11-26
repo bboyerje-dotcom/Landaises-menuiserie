@@ -16,6 +16,7 @@ beforeEach(async () => {
   await ctx?.close();
   ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
   page = await ctx.newPage();
+  page.setDefaultTimeout(10000);
   page.on('pageerror', (e) => { throw e; });
 });
 
@@ -31,6 +32,7 @@ async function creerDossier(p) {
 
 async function ouvrirNouvelOuvrage(p) {
   await p.click('[data-test=ajouter-ouvrage]');
+  await p.click('[data-test=produit-fenetre]');
   await p.waitForSelector('#fo');
 }
 

@@ -20,6 +20,7 @@ beforeEach(async () => {
   await ctx?.close();
   ctx = await browser.newContext({ viewport: { width: 390, height: 844 } }); // smartphone
   page = await ctx.newPage();
+  page.setDefaultTimeout(10000);
   page.on('pageerror', (e) => { throw e; });
   await page.goto(url);
 });

@@ -22,6 +22,7 @@ beforeEach(async () => {
   await ctx?.close();
   ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, acceptDownloads: true });
   page = await ctx.newPage();
+  page.setDefaultTimeout(10000);
   page.on('pageerror', (e) => { throw e; });
 });
 
@@ -81,7 +82,7 @@ test('export ProDevis : CSV Excel (BOM, « ; »), 1 ligne par ouvrage, formule n
   const lignes = csv.slice(1).trim().split('\r\n');
   assert.equal(lignes.length, 3);
   assert.match(lignes[0], /^Réf\. dossier;Client;/);
-  assert.match(lignes[1], /;F1;Séjour;RDC;Fenêtre;Aluminium;.*;1198;1349;/);
+  assert.match(lignes[1], /;F1;Séjour;RDC;Fenêtre;1;Aluminium;.*;1198;1349;/);
   assert.match(lignes[2], /;'=1\+1;/);
   assert.match(lignes[2], /À VÉRIFIER/);
   assert.match(await page.textContent('[data-test=export-ok]'), /2 lignes, dont 1 À VÉRIFIER/);

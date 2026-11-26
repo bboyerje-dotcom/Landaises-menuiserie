@@ -9,6 +9,67 @@ import { COLONNES_PRODEVIS } from '../config/export-prodevis.js';
 import { REGLES } from '../config/regles.js';
 import { lireDossier, listerOuvrages, listerPhotos } from '../storage/db.js';
 import { pictoSens } from './ouvrage.js';
+import { produit } from '../catalogue/produits.js';
+import { TYPES_COTE, couleurCote } from '../catalogue/types-cotes.js';
+import { optionVisible } from '../domain/catalogue.js';
+import { illustration, svgCotesPhoto } from './dessin.js';
+import { positionsParDefaut } from './photo-cotes.js';
+
+const nomProduit = (o) => TYPOLOGIES[o.typologie] || produit(o.typologie)?.libelle || o.typologie;
+const nomPose = (o) => TYPES_POSE[o.typePose] || produit(o.produit)?.poses?.[o.typePose] || '—';
+
+// Valeurs des cotes d'un ouvrage, quel que soit son formulaire.
+export function valeursCotesOuvrage(o) {
+  const v = {};
+  if (o.kind === 'catalogue') Object.assign(v, o.cotes || {});
+  else {
+    ['L1', 'L2', 'L3'].forEach((k, i) => { v[k] = o.largeurs?.[i]; });
+    ['H1', 'H2', 'H3'].forEach((k, i) => { v[k] = o.hauteurs?.[i]; });
+    ['D1', 'D2'].forEach((k, i) => { v[k] = o.diagonales?.[i]; });
+  }
+  return Object.fromEntries(Object.entries(v).filter(([, x]) => x != null && !Number.isNaN(x)));
+}
+
+// Photo du document, avec les cotes dessinées dessus pour les vues intérieure/extérieure.
+function figurePhoto(p, o) {
+  const prod = produit(o.typologie);
+  const vals = valeursCotesOuvrage(o);
+  const vue = { exterieur: 'VUE EXTÉRIEURE', interieur: 'VUE INTÉRIEURE' }[p.categorie];
+  const calque = prod && vue && Object.keys(vals).length
+    ? `<div class="pc-calque">${svgCotesPhoto(prod, p.largeur || 1600, p.hauteur || 1200, vals, { ...positionsParDefaut(prod, p, o.pointDeVueMesure).positions, ...(p.annotations || {}) }, { vue })}</div>` : '';
+  return `<figure><div class="pc-cadre"><img data-photo="${p.id}" alt="${esc(CATEGORIES_PHOTO[p.categorie])}">${calque}</div>
+    <figcaption><strong>${esc(CATEGORIES_PHOTO[p.categorie])}</strong>${p.legende ? ` — ${esc(p.legende)}` : ''}</figcaption></figure>`;
+}
+
+function ficheCatalogue(o, photos) {
+  const p = produit(o.produit);
+  const L = (k, v) => `<tr><th>${k}</th><td>${esc(v) || '—'}</td></tr>`;
+  const vals = valeursCotesOuvrage(o);
+  return `<section class="fiche" data-test="fiche-ouvrage">
+    <div class="fiche-titre"><h2>${esc(o.repere)} · ${esc(p.libelle)}${o.quantite > 1 ? ` ×${o.quantite}` : ''} — ${esc(o.localisation || 'localisation ?')}${o.niveau ? ` (${esc(o.niveau)})` : ''}</h2>
+      <span class="statut ${o.statut === 'complet' ? 'ok' : 'alerte'}">${esc(STATUTS_OUVRAGE[o.statut])}</span></div>
+    <p class="doux">Relevé version ${o.version} du ${dateFr(o.modifieLe)} · mesures prises depuis l’${o.pointDeVueMesure === 'exterieur' ? 'extérieur' : o.pointDeVueMesure === 'interieur' ? 'intérieur' : '— ?'}</p>
+    ${o.pointsAVerifier?.length ? `<div class="a-verifier"><strong>Points à vérifier :</strong><ul>${o.pointsAVerifier.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div>` : ''}
+    <div class="col2">
+      <div>${illustration(p, vals)}</div>
+      <div class="defile"><table class="mesures metrage-doc"><caption>Tableau de métrage</caption><tbody>
+        ${p.cotes.map((c) => `<tr><td><span class="code" style="--c:${couleurCote(c.type)}">${esc(c.code)}</span></td><th>${esc(c.libelle)}</th>
+          <td class="retenue">${vals[c.id] != null ? `${vals[c.id]}${c.unite === 'deg' ? '°' : ''}` : (c.obligatoire ? 'NON MESURÉ' : '—')}</td></tr>`).join('')}
+        <tr><td></td><th>Retenues L × H (mm)</th><td class="retenue">${mm(o.largeurRetenue)} × ${mm(o.hauteurRetenue)}</td></tr>
+      </tbody></table></div>
+    </div>
+    <div class="col2">
+      <table class="kv"><caption>Pose</caption>
+        ${p.poses ? L('Type de pose', nomPose(o)) + L('Confirmée par le client', o.poseConfirmee ? `Oui, le ${dateFr(o.poseConfirmeeLe)}` : 'NON') : L('Type de pose', 'Sans objet')}
+      </table>
+      <table class="kv"><caption>Options</caption>
+        ${(p.options || []).filter((op) => optionVisible(op, o.options || {})).map((op) => L(op.libelle, op.choix[o.options?.[op.id]] || (op.obligatoire ? 'NON RENSEIGNÉ' : '—'))).join('') || L('—', '')}
+      </table>
+    </div>
+    <div><strong>Observations</strong><p class="obs">${esc(o.observations) || '—'}</p></div>
+    ${photos.length ? `<div class="photos-doc">${photos.map((ph) => figurePhoto(ph, o)).join('')}</div>` : '<p class="doux">Aucune photo.</p>'}
+  </section>`;
+}
 
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const lib = (dico, v) => dico[v] || '—';
@@ -64,8 +125,7 @@ function ficheOuvrage(o, photos) {
       </div>
       <div><strong>Observations</strong><p class="obs">${esc(o.observations) || '—'}</p></div>
     </div>
-    ${photos.length ? `<div class="photos-doc">${photos.map((p) => `<figure><img data-photo="${p.id}" alt="${esc(CATEGORIES_PHOTO[p.categorie])}">
-      <figcaption><strong>${esc(CATEGORIES_PHOTO[p.categorie])}</strong>${p.legende ? ` — ${esc(p.legende)}` : ''}</figcaption></figure>`).join('')}</div>` : '<p class="doux">Aucune photo.</p>'}
+    ${photos.length ? `<div class="photos-doc">${photos.map((p) => figurePhoto(p, o)).join('')}</div>` : '<p class="doux">Aucune photo.</p>'}
   </section>`;
 }
 
@@ -114,10 +174,10 @@ export async function ecranReleve(app, dossierId) {
       ${d.description || d.contraintes ? `<table class="kv large"><tr><th>Projet</th><td>${esc(d.description) || '—'}</td></tr><tr><th>Contraintes</th><td>${esc(d.contraintes) || '—'}</td></tr></table>` : ''}
       ${ouvrages.length ? `<div class="defile"><table class="synthese" data-test="synthese"><caption>Synthèse : ${ouvrages.length} ouvrage${ouvrages.length > 1 ? 's' : ''}, dont ${nbAV} à vérifier</caption>
         <thead><tr><th>Repère</th><th>Ouvrage</th><th>Pièce</th><th>L × H retenues (mm)</th><th>Pose</th><th>Statut</th></tr></thead>
-        <tbody>${ouvrages.map((o) => `<tr><td>${esc(o.repere)}</td><td>${esc(lib(TYPOLOGIES, o.typologie))}</td><td>${esc(o.localisation)}</td>
-          <td>${mm(o.largeurRetenue)} × ${mm(o.hauteurRetenue)}</td><td>${esc(lib(TYPES_POSE, o.typePose))}</td>
+        <tbody>${ouvrages.map((o) => `<tr><td>${esc(o.repere)}</td><td>${esc(nomProduit(o))}${o.quantite > 1 ? ` ×${o.quantite}` : ''}</td><td>${esc(o.localisation)}</td>
+          <td>${mm(o.largeurRetenue)} × ${mm(o.hauteurRetenue)}</td><td>${esc(nomPose(o))}</td>
           <td class="${o.statut === 'complet' ? 'ok' : 'alerte'}">${esc(STATUTS_OUVRAGE[o.statut])}</td></tr>`).join('')}</tbody></table></div>` : ''}
-      ${ouvrages.map((o) => ficheOuvrage(o, photosPar[o.id])).join('')}
+      ${ouvrages.map((o) => (o.kind === 'catalogue' && produit(o.produit) ? ficheCatalogue(o, photosPar[o.id]) : ficheOuvrage(o, photosPar[o.id]))).join('')}
       <section class="validation">
         <strong>Validation technique</strong> (personne habilitée)
         <div class="cases"><div>Nom :</div><div>Date :</div><div>Signature :</div></div>
