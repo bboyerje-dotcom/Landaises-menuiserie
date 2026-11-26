@@ -1,0 +1,14 @@
+{
+  "name": "pilotage-terrain",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Outil de relevé terrain complémentaire à ProDevis — Landaise de Menuiserie (test interne)",
+  "scripts": {
+    "start": "node server.mjs 8080",
+    "start:lan": "node server.mjs 8080 --lan",
+    "test": "node --test tests/dossier.test.js",
+    "test:e2e": "node --test tests/e2e.test.js",
+    "test:all": "node --test tests/"
+  }
+}
