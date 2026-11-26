@@ -5,7 +5,10 @@ import {
 import {
   ouvrirDb, creerDossier, listerDossiers, lireDossier,
   lireBrouillon, ecrireBrouillon, effacerBrouillon, demanderStockagePersistant, dateLocaleIso,
+  listerOuvrages, toutesLesDonnees,
 } from './storage/db.js';
+import { ecranOuvrage, carteOuvrage } from './ui/ouvrage.js';
+import { trierParRepere } from './domain/ouvrage.js';
 
 const app = document.getElementById('app');
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -18,6 +21,8 @@ async function router() {
   const h = location.hash || '#/';
   try {
     if (h.startsWith('#/nouveau')) return ecranNouveau();
+    const mo = h.match(/^#\/dossier\/([^/?]+)\/ouvrage\/([^/?]+)/);
+    if (mo) return ecranOuvrage(app, decodeURIComponent(mo[1]), mo[2] === 'nouveau' ? null : decodeURIComponent(mo[2]));
     const m = h.match(/^#\/dossier\/([^?]+)(\?cree=1)?/);
     if (m) return ecranDossier(decodeURIComponent(m[1]), !!m[2]);
     return ecranListe();
@@ -59,8 +64,9 @@ async function ecranListe() {
     const q = e.target.value.toLowerCase().trim();
     rendre(dossiers.filter((d) => [d.reference, d.clientNom, d.commune, d.adresse, d.telephone].join(' ').toLowerCase().includes(q)));
   });
-  document.getElementById('export').onclick = () => {
-    const blob = new Blob([JSON.stringify({ exporteLe: new Date().toISOString(), dossiers }, null, 2)], { type: 'application/json' });
+  document.getElementById('export').onclick = async () => {
+    const donnees = await toutesLesDonnees();
+    const blob = new Blob([JSON.stringify({ exporteLe: new Date().toISOString(), version: 2, ...donnees }, null, 2)], { type: 'application/json' });
     const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: `sauvegarde-pilotage-${dateLocaleIso(new Date())}.json` });
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
@@ -224,6 +230,8 @@ async function ecranDossier(id, cree) {
     app.innerHTML = `<div class="bandeau erreur" role="alert">Dossier introuvable sur cet appareil.</div><a class="btn" href="#/">Retour</a>`;
     return;
   }
+  const ouvrages = (await listerOuvrages(d.id)).sort(trierParRepere);
+  const nbComplets = ouvrages.filter((o) => o.statut === 'complet').length;
   const L = (k, v) => `<dt>${k}</dt><dd>${esc(v) || '—'}</dd>`;
   app.innerHTML = `
     ${cree ? `<div class="bandeau ok" role="status" data-test="cree">Dossier enregistré sur cet appareil.</div>` : ''}
@@ -237,7 +245,10 @@ async function ecranDossier(id, cree) {
       ${L('Responsable', d.responsable)}${L('Rendez-vous', dateFr(d.dateRdv))}
       ${L('Créé le', heureFr(d.creeLe))}${L('Durée de saisie', duree(d.saisieDureeSec))}
     </dl></div>
-    <p class="doux">Étape suivante (à venir) : ajouter les ouvrages et le relevé guidé.</p>
+    <h2>Ouvrages (${ouvrages.length})</h2>
+    ${ouvrages.length ? `<p class="doux" data-test="synthese-ouvrages">${nbComplets} COMPLET · ${ouvrages.length - nbComplets} À VÉRIFIER</p>` : '<p class="doux">Aucun ouvrage relevé.</p>'}
+    ${ouvrages.map((o) => carteOuvrage(d.id, o)).join('')}
+    <div class="actions"><a class="btn plein" href="#/dossier/${encodeURIComponent(d.id)}/ouvrage/nouveau" data-test="ajouter-ouvrage">+ Ajouter un ouvrage</a></div>
     <div class="actions"><a class="btn" href="#/">Retour à la liste</a><a class="btn secondaire" href="#/nouveau">+ Autre dossier</a></div>`;
 }
 

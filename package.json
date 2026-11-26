@@ -7,8 +7,8 @@
   "scripts": {
     "start": "node server.mjs 8080",
     "start:lan": "node server.mjs 8080 --lan",
-    "test": "node --test tests/dossier.test.js",
-    "test:e2e": "node --test tests/e2e.test.js",
+    "test": "node --test tests/dossier.test.js tests/ouvrage.test.js",
+    "test:e2e": "node --test --test-concurrency=1 tests/e2e.test.js tests/e2e-ouvrage.test.js",
     "test:all": "node --test tests/"
   }
 }

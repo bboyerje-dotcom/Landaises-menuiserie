@@ -2,7 +2,7 @@
 import { genererReference, prefixeReference, prochaineSequence } from '../domain/dossier.js';
 
 const NOM_BASE = 'pilotage-terrain';
-const VERSION = 1;
+const VERSION = 2; // v1 : dossiers — v2 : + ouvrages
 let dbPromise = null;
 
 function req(r) {
@@ -16,11 +16,18 @@ export function ouvrirDb() {
   if (!dbPromise) {
     dbPromise = new Promise((ok, ko) => {
       const r = indexedDB.open(NOM_BASE, VERSION);
-      r.onupgradeneeded = () => {
+      // Migrations successives : les données d'une version antérieure sont conservées.
+      r.onupgradeneeded = (ev) => {
         const db = r.result;
-        const s = db.createObjectStore('dossiers', { keyPath: 'id' });
-        s.createIndex('reference', 'reference', { unique: true });
-        s.createIndex('creeLe', 'creeLe');
+        if (ev.oldVersion < 1) {
+          const s = db.createObjectStore('dossiers', { keyPath: 'id' });
+          s.createIndex('reference', 'reference', { unique: true });
+          s.createIndex('creeLe', 'creeLe');
+        }
+        if (ev.oldVersion < 2) {
+          const o = db.createObjectStore('ouvrages', { keyPath: 'id' });
+          o.createIndex('dossierId', 'dossierId');
+        }
       };
       r.onsuccess = () => ok(r.result);
       r.onerror = () => ko(r.error);
@@ -109,30 +116,90 @@ export function dateLocaleIso(d) {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 }
 
-// --- Brouillon du formulaire (survit à un rechargement, un crash ou une coupure) ---
-const CLE_BROUILLON = 'pt.brouillon.nouveauDossier';
+// --- Ouvrages ---
+const CHAMPS_TECHNIQUES = ['version', 'creeLe', 'modifieLe', 'saisieDureeSec', 'historique'];
+const contenu = (o) => JSON.stringify(Object.fromEntries(Object.entries(o).filter(([k]) => !CHAMPS_TECHNIQUES.includes(k)).sort()));
 
-export function lireBrouillon() {
+// Création ou mise à jour idempotente : renvoyer deux fois le même contenu ne crée
+// ni doublon ni nouvelle version. Chaque modification réelle incrémente la version
+// et ajoute une ligne d'historique (date, version).
+export async function enregistrerOuvrage(ouvrage, { dureeSec = 0, maintenant = new Date() } = {}) {
+  const db = await ouvrirDb();
+  return new Promise((ok, ko) => {
+    let resultat;
+    const tx = db.transaction(['ouvrages', 'dossiers'], 'readwrite');
+    tx.oncomplete = () => ok(resultat);
+    tx.onerror = () => ko(tx.error);
+    tx.onabort = () => ko(tx.error || new Error('Enregistrement annulé.'));
+    const s = tx.objectStore('ouvrages');
+    tx.objectStore('dossiers').get(ouvrage.dossierId).onsuccess = (e0) => {
+      try {
+        if (!e0.target.result) { tx.abort(); ko(new Error('Dossier introuvable.')); return; }
+        s.get(ouvrage.id).onsuccess = (ev) => {
+          try {
+            const ancien = ev.target.result;
+            const t = maintenant.toISOString();
+            if (ancien && contenu(ancien) === contenu(ouvrage)) { resultat = { ouvrage: ancien, inchange: true }; return; }
+            const version = (ancien?.version || 0) + 1;
+            const nouveau = {
+              ...ouvrage,
+              creeLe: ancien?.creeLe || t,
+              modifieLe: t,
+              version,
+              saisieDureeSec: (ancien?.saisieDureeSec || 0) + Math.max(0, Math.round(dureeSec)),
+              historique: [...(ancien?.historique || []), { version, le: t, action: ancien ? 'modification' : 'création' }],
+            };
+            s.put(nouveau);
+            resultat = { ouvrage: nouveau, inchange: false };
+          } catch (err) { tx.abort(); ko(err); }
+        };
+      } catch (err) { tx.abort(); ko(err); }
+    };
+  });
+}
+
+export async function listerOuvrages(dossierId) {
+  const db = await ouvrirDb();
+  return req(db.transaction('ouvrages').objectStore('ouvrages').index('dossierId').getAll(dossierId));
+}
+
+export async function lireOuvrage(id) {
+  const db = await ouvrirDb();
+  return req(db.transaction('ouvrages').objectStore('ouvrages').get(id));
+}
+
+export async function toutesLesDonnees() {
+  const db = await ouvrirDb();
+  const tx = db.transaction(['dossiers', 'ouvrages']);
+  const [dossiers, ouvrages] = await Promise.all([req(tx.objectStore('dossiers').getAll()), req(tx.objectStore('ouvrages').getAll())]);
+  return { dossiers, ouvrages };
+}
+
+// --- Brouillons de formulaire (survivent à un rechargement, un crash ou une coupure) ---
+export const CLE_BROUILLON_DOSSIER = 'pt.brouillon.nouveauDossier';
+export const cleBrouillonOuvrage = (dossierId, ouvrageId) => `pt.brouillon.ouvrage.${dossierId}.${ouvrageId || 'nouveau'}`;
+
+export function lireBrouillon(cle = CLE_BROUILLON_DOSSIER) {
   try {
-    const v = localStorage.getItem(CLE_BROUILLON);
+    const v = localStorage.getItem(cle);
     return v ? JSON.parse(v) : null;
   } catch {
     return null;
   }
 }
 
-export function ecrireBrouillon(b) {
+export function ecrireBrouillon(b, cle = CLE_BROUILLON_DOSSIER) {
   try {
-    localStorage.setItem(CLE_BROUILLON, JSON.stringify(b));
+    localStorage.setItem(cle, JSON.stringify(b));
     return true;
   } catch {
     return false;
   }
 }
 
-export function effacerBrouillon() {
+export function effacerBrouillon(cle = CLE_BROUILLON_DOSSIER) {
   try {
-    localStorage.removeItem(CLE_BROUILLON);
+    localStorage.removeItem(cle);
   } catch {
     /* rien */
   }
