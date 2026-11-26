@@ -154,3 +154,7 @@ dd { margin: 0; overflow-wrap: anywhere; white-space: pre-wrap; }
   .photos-doc img { max-height: 70mm; }
   tr, figure { break-inside: avoid; }
 }
+.defile { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.synthese th, .synthese td, .mesures th, .mesures td { overflow-wrap: normal; white-space: nowrap; }
+.synthese td:nth-child(5) { white-space: normal; min-width: 140px; }
+@media print { .defile { overflow: visible; } .synthese th, .synthese td, .mesures th, .mesures td { white-space: normal; } }

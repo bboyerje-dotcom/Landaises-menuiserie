@@ -50,14 +50,14 @@ function ficheOuvrage(o, photos) {
         ${L('Vitrage', o.vitrage)}
       </table>
     </div>
-    <table class="mesures"><caption>Mesures en mm — prises ${esc(lib(REFERENCES_MESURE, o.referenceMesure).toLowerCase())}, depuis l’${esc(lib(POINTS_DE_VUE, o.pointDeVueMesure).toLowerCase())}</caption>
+    <div class="defile"><table class="mesures"><caption>Mesures en mm — prises ${esc(lib(REFERENCES_MESURE, o.referenceMesure).toLowerCase())}, depuis l’${esc(lib(POINTS_DE_VUE, o.pointDeVueMesure).toLowerCase())}</caption>
       <thead><tr><th></th><th>1</th><th>2</th><th>3</th><th>Retenue</th></tr></thead>
       <tbody>
         <tr><th>Largeur (haut / milieu / bas)</th>${(o.largeurs || []).map((v) => `<td>${mm(v)}</td>`).join('')}<td class="retenue">${mm(o.largeurRetenue)}</td></tr>
         <tr><th>Hauteur (gauche / milieu / droite)</th>${(o.hauteurs || []).map((v) => `<td>${mm(v)}</td>`).join('')}<td class="retenue">${mm(o.hauteurRetenue)}</td></tr>
         <tr><th>Diagonales D1 / D2</th><td>${mm(o.diagonales?.[0])}</td><td>${mm(o.diagonales?.[1])}</td><td></td><td></td></tr>
       </tbody>
-    </table>
+    </table></div>
     <div class="col2">
       <div><strong>Sens d’ouverture (vu de l’intérieur)</strong>
         ${ouvrant && o.sens ? `<div class="picto-doc">${pictoSens(o.sens, o.nbVantaux || 1)}</div><div>${o.nbVantaux >= 2 ? 'Vantail de service : ' : 'Paumelles à '}${esc(lib(SENS, o.sens).toLowerCase())}</div>` : `<p>${ouvrant ? 'NON RENSEIGNÉ' : 'Sans objet (fixe)'}</p>`}
@@ -112,11 +112,11 @@ export async function ecranReleve(app, dossierId) {
         </table>
       </section>
       ${d.description || d.contraintes ? `<table class="kv large"><tr><th>Projet</th><td>${esc(d.description) || '—'}</td></tr><tr><th>Contraintes</th><td>${esc(d.contraintes) || '—'}</td></tr></table>` : ''}
-      ${ouvrages.length ? `<table class="synthese" data-test="synthese"><caption>Synthèse : ${ouvrages.length} ouvrage${ouvrages.length > 1 ? 's' : ''}, dont ${nbAV} à vérifier</caption>
+      ${ouvrages.length ? `<div class="defile"><table class="synthese" data-test="synthese"><caption>Synthèse : ${ouvrages.length} ouvrage${ouvrages.length > 1 ? 's' : ''}, dont ${nbAV} à vérifier</caption>
         <thead><tr><th>Repère</th><th>Ouvrage</th><th>Pièce</th><th>L × H retenues (mm)</th><th>Pose</th><th>Statut</th></tr></thead>
         <tbody>${ouvrages.map((o) => `<tr><td>${esc(o.repere)}</td><td>${esc(lib(TYPOLOGIES, o.typologie))}</td><td>${esc(o.localisation)}</td>
           <td>${mm(o.largeurRetenue)} × ${mm(o.hauteurRetenue)}</td><td>${esc(lib(TYPES_POSE, o.typePose))}</td>
-          <td class="${o.statut === 'complet' ? 'ok' : 'alerte'}">${esc(STATUTS_OUVRAGE[o.statut])}</td></tr>`).join('')}</tbody></table>` : ''}
+          <td class="${o.statut === 'complet' ? 'ok' : 'alerte'}">${esc(STATUTS_OUVRAGE[o.statut])}</td></tr>`).join('')}</tbody></table></div>` : ''}
       ${ouvrages.map((o) => ficheOuvrage(o, photosPar[o.id])).join('')}
       <section class="validation">
         <strong>Validation technique</strong> (personne habilitée)
