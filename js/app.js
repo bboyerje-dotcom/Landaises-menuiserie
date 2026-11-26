@@ -8,6 +8,7 @@ import {
   listerOuvrages, toutesLesDonnees, compterPhotosParOuvrage,
 } from './storage/db.js';
 import { ecranOuvrage, carteOuvrage } from './ui/ouvrage.js';
+import { ecranReleve } from './ui/releve.js';
 import { trierParRepere } from './domain/ouvrage.js';
 
 const app = document.getElementById('app');
@@ -28,6 +29,8 @@ async function router() {
   const h = location.hash || '#/';
   try {
     if (h.startsWith('#/nouveau')) return ecranNouveau();
+    const mr = h.match(/^#\/dossier\/([^/?]+)\/releve/);
+    if (mr) return ecranReleve(app, decodeURIComponent(mr[1]));
     const mo = h.match(/^#\/dossier\/([^/?]+)\/ouvrage\/([^/?]+)/);
     if (mo) return ecranOuvrage(app, decodeURIComponent(mo[1]), mo[2] === 'nouveau' ? null : decodeURIComponent(mo[2]));
     const m = h.match(/^#\/dossier\/([^?]+)(\?cree=1)?/);
@@ -259,6 +262,7 @@ async function ecranDossier(id, cree) {
     ${ouvrages.length ? `<p class="doux" data-test="synthese-ouvrages">${nbComplets} COMPLET · ${ouvrages.length - nbComplets} À VÉRIFIER</p>` : '<p class="doux">Aucun ouvrage relevé.</p>'}
     ${ouvrages.map((o) => carteOuvrage(d.id, o, nbPhotos[o.id] || 0)).join('')}
     <div class="actions"><a class="btn plein" href="#/dossier/${encodeURIComponent(d.id)}/ouvrage/nouveau" data-test="ajouter-ouvrage">+ Ajouter un ouvrage</a></div>
+    <div class="actions"><a class="btn secondaire plein" href="#/dossier/${encodeURIComponent(d.id)}/releve" data-test="ouvrir-releve">📄 Relevé PDF et export ProDevis</a></div>
     <div class="actions"><a class="btn" href="#/">Retour à la liste</a><a class="btn secondaire" href="#/nouveau">+ Autre dossier</a></div>`;
 }
 

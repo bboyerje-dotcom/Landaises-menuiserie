@@ -59,7 +59,7 @@ function schemaMesures(pdv) {
 }
 
 // Pictogramme du sens : toujours vu de l'intérieur.
-function pictoSens(cote, nbVantaux) {
+export function pictoSens(cote, nbVantaux) {
   const x = cote === 'gauche' ? 14 : 66;
   const charn = [22, 46].map((y) => `<rect x="${x - 3}" y="${y}" width="6" height="10" class="sv-paum"/>`).join('');
   const fleche = cote === 'gauche' ? 'M58,40 q-18,-14 -36,0' : 'M22,40 q18,-14 36,0';
